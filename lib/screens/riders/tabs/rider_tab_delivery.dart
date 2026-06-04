@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../services/api_services.dart';
 import '../../../services/auth_service.dart';
 import '../../../utils/format_api_label.dart';
+import '../../../utils/phone_launcher.dart';
 import '../rider_delivery_detail_screen.dart';
 
 class RiderTabDelivery extends StatefulWidget {
@@ -66,13 +67,34 @@ class _RiderTabDeliveryState extends State<RiderTabDelivery> {
                       ];
                       final subtitleText =
                           subtitleLines.isEmpty ? '—' : subtitleLines.join('\n');
+                      final customerPhone =
+                          (customer?['phone']?.toString() ?? '').trim();
                       return Card(
                         child: ListTile(
                           leading: const Icon(Icons.two_wheeler, color: _brand),
                           title: Text(o['order_number']?.toString() ?? 'Order'),
                           subtitle: Text(subtitleText),
                           isThreeLine: subtitleLines.length > 1,
-                          trailing: const Icon(Icons.chevron_right),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (customerPhone.isNotEmpty)
+                                IconButton(
+                                  onPressed: () => launchPhoneCall(
+                                    customerPhone,
+                                    context: context,
+                                  ),
+                                  icon: const Icon(
+                                    Icons.phone,
+                                    color: _brand,
+                                    size: 22,
+                                  ),
+                                  tooltip: 'Call customer',
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              const Icon(Icons.chevron_right),
+                            ],
+                          ),
                           onTap: () async {
                             await Navigator.push(
                               context,

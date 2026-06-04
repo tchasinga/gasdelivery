@@ -546,11 +546,21 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> riderDeliverNow(String token, int orderId) async {
+  static Future<Map<String, dynamic>> riderDeliverNow(
+    String token,
+    int orderId, {
+    String? customerNumberAlternative,
+  }) async {
     try {
+      final body = <String, dynamic>{};
+      if (customerNumberAlternative != null &&
+          customerNumberAlternative.trim().isNotEmpty) {
+        body['customer_number_alternative'] = customerNumberAlternative.trim();
+      }
       final response = await http.post(
         Uri.parse('$baseUrl/rider/delivery-orders/$orderId/deliver-now'),
         headers: _authHeaders(token),
+        body: body.isEmpty ? null : jsonEncode(body),
       );
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
