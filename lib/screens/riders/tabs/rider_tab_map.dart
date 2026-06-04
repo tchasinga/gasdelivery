@@ -24,7 +24,8 @@ class _RiderTabMapState extends State<RiderTabMap> {
   static const _brand = Color(0xFF014F5B);
   static final _defaultCenter = const LatLng(-1.286389, 36.817223);
 
-  final Completer<GoogleMapController> _mapController = Completer();
+  GoogleMapController? _mapController;
+  int _mapSession = 0;
 
   List<dynamic> _orders = [];
   Map<String, dynamic>? _selected;
@@ -66,11 +67,15 @@ class _RiderTabMapState extends State<RiderTabMap> {
       _resumeTracking();
     } else if (!widget.isActive && oldWidget.isActive) {
       _pauseTracking();
+      _mapSession++;
+      _mapController = null;
     }
   }
 
   @override
   void dispose() {
+    _mapSession++;
+    _mapController = null;
     _pauseTracking();
     super.dispose();
   }
@@ -274,7 +279,9 @@ class _RiderTabMapState extends State<RiderTabMap> {
       _markers = _buildMarkers();
       _polylines = _buildPolylines();
     });
-    await _fitCameraToRoute();
+    if (mounted && widget.isActive) {
+      await _fitCameraToRoute();
+    }
     await _pushLocationToBackend();
   }
 
@@ -331,39 +338,48 @@ class _RiderTabMapState extends State<RiderTabMap> {
   }
 
   Future<void> _fitCameraToRoute() async {
-    if (!_mapController.isCompleted || !widget.isActive) return;
-    final controller = await _mapController.future;
+    if (!mounted || !widget.isActive) return;
+    final controller = _mapController;
+    if (controller == null) return;
+
+    final session = _mapSession;
     final points = <LatLng>[_riderPosition];
     if (_destination != null) points.add(_destination!);
     points.addAll(_routePoints);
 
-    if (points.length == 1) {
-      await controller.animateCamera(
-        CameraUpdate.newLatLngZoom(_riderPosition, 15),
-      );
-      return;
+    Future<void> animate(CameraUpdate update) async {
+      if (!mounted || !widget.isActive || session != _mapSession) return;
+      await controller.animateCamera(update);
     }
 
-    double minLat = points.first.latitude;
-    double maxLat = points.first.latitude;
-    double minLng = points.first.longitude;
-    double maxLng = points.first.longitude;
-
-    for (final p in points) {
-      minLat = minLat < p.latitude ? minLat : p.latitude;
-      maxLat = maxLat > p.latitude ? maxLat : p.latitude;
-      minLng = minLng < p.longitude ? minLng : p.longitude;
-      maxLng = maxLng > p.longitude ? maxLng : p.longitude;
-    }
-
-    final bounds = LatLngBounds(
-      southwest: LatLng(minLat, minLng),
-      northeast: LatLng(maxLat, maxLng),
-    );
     try {
-      await controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
+      if (points.length == 1) {
+        await animate(CameraUpdate.newLatLngZoom(_riderPosition, 15));
+        return;
+      }
+
+      double minLat = points.first.latitude;
+      double maxLat = points.first.latitude;
+      double minLng = points.first.longitude;
+      double maxLng = points.first.longitude;
+
+      for (final p in points) {
+        minLat = minLat < p.latitude ? minLat : p.latitude;
+        maxLat = maxLat > p.latitude ? maxLat : p.latitude;
+        minLng = minLng < p.longitude ? minLng : p.longitude;
+        maxLng = maxLng > p.longitude ? maxLng : p.longitude;
+      }
+
+      final bounds = LatLngBounds(
+        southwest: LatLng(minLat, minLng),
+        northeast: LatLng(maxLat, maxLng),
+      );
+      await animate(CameraUpdate.newLatLngBounds(bounds, 80));
     } catch (_) {
-      await controller.animateCamera(CameraUpdate.newLatLngZoom(_riderPosition, 14));
+      if (!mounted || !widget.isActive || session != _mapSession) return;
+      try {
+        await animate(CameraUpdate.newLatLngZoom(_riderPosition, 14));
+      } catch (_) {}
     }
   }
 
@@ -397,10 +413,10 @@ class _RiderTabMapState extends State<RiderTabMap> {
               mapType: MapType.normal,
               initialCameraPosition: CameraPosition(target: _riderPosition, zoom: 14),
               onMapCreated: (controller) {
-                if (!_mapController.isCompleted) {
-                  _mapController.complete(controller);
+                _mapController = controller;
+                if (widget.isActive) {
+                  _fitCameraToRoute();
                 }
-                _fitCameraToRoute();
               },
               myLocationEnabled: false,
               myLocationButtonEnabled: false,
