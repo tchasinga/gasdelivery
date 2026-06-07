@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'rider_return_cylinders_screen.dart';
 import 'tabs/rider_tab_delivery.dart';
 import 'tabs/rider_tab_history.dart';
 import 'tabs/rider_tab_home.dart';
@@ -31,6 +32,39 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: _isMapTab,
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(color: Color(0xFF014F5B)),
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: Text(
+                  'Rider menu',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.keyboard_return_rounded),
+              title: const Text('Return Cylinder'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const RiderReturnCylindersScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
       appBar: _isMapTab
           ? null
           : AppBar(

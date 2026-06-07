@@ -127,19 +127,19 @@ class ApiService {
     }
   }
 
-  static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://127.0.0.1:8000/api';
-    }
-    return 'http://${Platform.isAndroid ? '10.0.2.2' : '127.0.0.1'}:8000/api';
-  }
-
   // static String get baseUrl {
   //   if (kIsWeb) {
-  //     return 'https://cylindtrack.veritech.co.ke/api';
+  //     return 'http://127.0.0.1:8000/api';
   //   }
-  //   return 'https://cylindtrack.veritech.co.ke/api';
+  //   return 'http://${Platform.isAndroid ? '10.0.2.2' : '127.0.0.1'}:8000/api';
   // }
+
+  static String get baseUrl {
+    if (kIsWeb) {
+      return 'https://cylindtrack.veritech.co.ke/api';
+    }
+    return 'https://cylindtrack.veritech.co.ke/api';
+  }
 
   /// Sanctum-protected rider verification image (`national_id` or `selfie`).
   static String riderVerificationPhotoUrl(String kind) {
@@ -473,6 +473,240 @@ class ApiService {
       final data = jsonDecode(response.body);
       if (response.statusCode == 201 && data['success'] == true) {
         return {'success': true, 'order': data['order'], 'message': data['message']};
+      }
+      return {'success': false, 'message': _firstApiErrorMessage(data)};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getCustomerReturnableCylinders(
+    String token,
+  ) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/customer-account/returns/cylinders'),
+        headers: _authHeaders(token),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        final rawList = data['cylinders'];
+        return {
+          'success': true,
+          'cylinders': rawList is List
+              ? rawList
+                  .whereType<Map>()
+                  .map((e) => Map<String, dynamic>.from(e))
+                  .toList()
+              : <Map<String, dynamic>>[],
+        };
+      }
+      return {'success': false, 'message': _firstApiErrorMessage(data)};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getCustomerReturnRiders({
+    required String token,
+    String? query,
+  }) async {
+    try {
+      final params = <String, String>{};
+      if (query != null && query.isNotEmpty) {
+        params['q'] = query;
+      }
+      final uri = Uri.parse('$baseUrl/customer-account/returns/riders')
+          .replace(queryParameters: params.isEmpty ? null : params);
+      final response = await http.get(uri, headers: _authHeaders(token));
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        final rawList = data['riders'];
+        return {
+          'success': true,
+          'riders': rawList is List
+              ? rawList
+                  .whereType<Map>()
+                  .map((e) => Map<String, dynamic>.from(e))
+                  .toList()
+              : <Map<String, dynamic>>[],
+        };
+      }
+      return {'success': false, 'message': _firstApiErrorMessage(data)};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> customerInitiateReturn({
+    required String token,
+    required int riderId,
+    required List<int> cylinderIds,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/customer-account/returns/initiate'),
+        headers: _authHeaders(token),
+        body: jsonEncode({
+          'rider_id': riderId,
+          'cylinder_ids': cylinderIds,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {
+          'success': true,
+          'message': data['message'],
+          'order_confirmation_id': data['order_confirmation_id'],
+          'rider': data['rider'],
+        };
+      }
+      return {'success': false, 'message': _firstApiErrorMessage(data)};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> customerConfirmReturn({
+    required String token,
+    required int orderConfirmationId,
+    required String otpCode,
+    required int riderId,
+    required List<int> cylinderIds,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/customer-account/returns/confirm'),
+        headers: _authHeaders(token),
+        body: jsonEncode({
+          'order_confirmation_id': orderConfirmationId,
+          'otp_code': otpCode,
+          'rider_id': riderId,
+          'cylinder_ids': cylinderIds,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {
+          'success': true,
+          'message': data['message'],
+          'returns': data['returns'],
+        };
+      }
+      return {'success': false, 'message': _firstApiErrorMessage(data)};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getRiderReturnableCylinders(
+    String token,
+  ) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/rider/returns/cylinders'),
+        headers: _authHeaders(token),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        final rawList = data['cylinders'];
+        return {
+          'success': true,
+          'cylinders': rawList is List
+              ? rawList
+                  .whereType<Map>()
+                  .map((e) => Map<String, dynamic>.from(e))
+                  .toList()
+              : <Map<String, dynamic>>[],
+        };
+      }
+      return {'success': false, 'message': _firstApiErrorMessage(data)};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getRiderReturnMiniWarehouses(
+    String token,
+  ) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/rider/returns/mini-warehouses'),
+        headers: _authHeaders(token),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        final rawList = data['mini_warehouses'];
+        return {
+          'success': true,
+          'mini_warehouses': rawList is List
+              ? rawList
+                  .whereType<Map>()
+                  .map((e) => Map<String, dynamic>.from(e))
+                  .toList()
+              : <Map<String, dynamic>>[],
+        };
+      }
+      return {'success': false, 'message': _firstApiErrorMessage(data)};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> riderInitiateReturn({
+    required String token,
+    required int miniWarehouseId,
+    required List<int> cylinderIds,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/rider/returns/initiate'),
+        headers: _authHeaders(token),
+        body: jsonEncode({
+          'mini_warehouse_id': miniWarehouseId,
+          'cylinder_ids': cylinderIds,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {
+          'success': true,
+          'message': data['message'],
+          'order_confirmation_id': data['order_confirmation_id'],
+          'mini_warehouse': data['mini_warehouse'],
+        };
+      }
+      return {'success': false, 'message': _firstApiErrorMessage(data)};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> riderConfirmReturn({
+    required String token,
+    required int orderConfirmationId,
+    required String otpCode,
+    required int miniWarehouseId,
+    required List<int> cylinderIds,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/rider/returns/confirm'),
+        headers: _authHeaders(token),
+        body: jsonEncode({
+          'order_confirmation_id': orderConfirmationId,
+          'otp_code': otpCode,
+          'mini_warehouse_id': miniWarehouseId,
+          'cylinder_ids': cylinderIds,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {
+          'success': true,
+          'message': data['message'],
+          'returns': data['returns'],
+        };
       }
       return {'success': false, 'message': _firstApiErrorMessage(data)};
     } catch (e) {

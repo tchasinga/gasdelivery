@@ -4,13 +4,13 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_services.dart';
 import '../../services/auth_service.dart';
-import 'history_tab_screen.dart';
+import 'return_tab_screen.dart';
 import 'map_tab_screen.dart';
 import 'order_screen.dart';
 import 'profile_tab_screen.dart';
 import 'widgets/cart_icon_button.dart';
 
-/// Bottom tabs: Home, Map, Orders, History, Profile.
+/// Bottom tabs: Home, Map, Orders, Return, Profile.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -25,7 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const HomeTabScreen(),
     const MapTabScreen(),
     const OrderScreen(),
-    const HistoryTabScreen(),
+    const ReturnTabScreen(),
     const ProfileTabScreen(),
   ];
 
@@ -80,9 +80,9 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Orders',
           ),
           NavigationDestination(
-            icon: Icon(Icons.history_toggle_off_rounded),
-            selectedIcon: Icon(Icons.history_rounded),
-            label: 'History',
+            icon: Icon(Icons.keyboard_return_outlined),
+            selectedIcon: Icon(Icons.keyboard_return_rounded),
+            label: 'Return',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),
