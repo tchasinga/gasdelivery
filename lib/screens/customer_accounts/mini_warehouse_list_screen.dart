@@ -22,15 +22,26 @@ class _MiniWarehouseListScreenState extends State<MiniWarehouseListScreen>
   static const _brand = Color(0xFF014F5B);
   late final TabController _tabController;
   int? _selectedId;
+  bool _mapTabVisible = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    final visible = _tabController.index == 1;
+    if (visible != _mapTabVisible && mounted) {
+      setState(() => _mapTabVisible = visible);
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -87,7 +98,7 @@ class _MiniWarehouseListScreenState extends State<MiniWarehouseListScreen>
                   leading: const CircleAvatar(
                     backgroundColor: Color(0xFFE8F4F6),
                     child: Icon(Icons.local_gas_station, color: _brand),
-                  ), //here I will add more details about the warehouse like the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of cylinders in stock, the number of
+                  ),
                   title: Text(w['name']?.toString() ?? ''),
                   subtitle: Text(
                     '${w['address'] ?? ''}\n${w['distance_km']} km • Shop ${w['attendant_phone_number'] ?? 'N/A'}',
@@ -99,15 +110,17 @@ class _MiniWarehouseListScreenState extends State<MiniWarehouseListScreen>
               );
             },
           ),
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: LatLng(widget.currentLat, widget.currentLng),
-              zoom: 12.5,
-            ),
-            markers: markers,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
-          ),
+          _mapTabVisible
+              ? GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: LatLng(widget.currentLat, widget.currentLng),
+                    zoom: 12.5,
+                  ),
+                  markers: markers,
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
+                )
+              : const ColoredBox(color: Color(0xFFE8F4F6)),
         ],
       ),
       bottomNavigationBar: SafeArea(

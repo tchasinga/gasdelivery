@@ -1,5 +1,5 @@
 name: gasdelivery
-description: "Gas Delivery App"
+description: "Gas Delivery — customer app for ordering LPG"
 publish_to: 'none'
 version: 1.0.0+1
 

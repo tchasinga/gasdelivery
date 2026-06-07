@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
-import '../services/auth_service.dart';
 import '../widgets/address_picker_dialog.dart';
 import '../widgets/auth_screen_shell.dart';
 import 'login_screen.dart';
-import 'riders/rider_signup_stepper.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -23,48 +21,6 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _isLoading = false;
   bool _agreedToTerms = false;
 
-  String? _portal;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _pickPortal());
-  }
-
-  Future<void> _pickPortal() async {
-    if (!mounted || _portal != null) return;
-    final choice = await showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Sign up as'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.person_outline),
-                title: const Text('Customer'),
-                subtitle: const Text('Phone delivery account'),
-                onTap: () => Navigator.pop(ctx, AppAuthRole.customerAccounts),
-              ),
-              ListTile(
-                leading: const Icon(Icons.two_wheeler),
-                title: const Text('Rider'),
-                subtitle: const Text('Multi-step rider application'),
-                onTap: () => Navigator.pop(ctx, AppAuthRole.riders),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-    if (!mounted) return;
-    setState(() {
-      _portal = choice ?? AppAuthRole.customerAccounts;
-    });
-  }
-
   @override
   void dispose() {
     _nameController.dispose();
@@ -76,59 +32,44 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _pickAddress() async {
     final address = await showDialog<String>(
       context: context,
-      builder:
-          (context) =>
-              AddressPickerDialog(initialAddress: _addressController.text),
+      builder: (context) => const AddressPickerDialog(),
     );
-
-    if (address != null && address.isNotEmpty && mounted) {
-      setState(() {
-        _addressController.text = address;
-      });
+    if (address != null && address.isNotEmpty) {
+      setState(() => _addressController.text = address);
     }
   }
 
   Future<void> _signup() async {
+    if (!_formKey.currentState!.validate()) return;
     if (!_agreedToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please agree to the Terms and Conditions'),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.orange,
         ),
       );
       return;
     }
 
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final address = _addressController.text.trim();
     final result = await authProvider.signup(
       accountCustomerName: _nameController.text.trim(),
       accountCustomerPhoneNumber: _phoneController.text.trim(),
-      accountCustomerAddress: address.isNotEmpty ? address : null,
+      accountCustomerAddress: _addressController.text.trim(),
     );
-
     if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-    });
+    setState(() => _isLoading = false);
 
     if (result['success'] == true) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Account created successfully! Please login.'),
-          backgroundColor: Color(0xFF014F5B),
+          content: Text('Account created. Please sign in.'),
+          backgroundColor: Colors.green,
         ),
       );
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -142,22 +83,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_portal == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Color(0xFF014F5B))),
-      );
-    }
-
-    if (_portal == AppAuthRole.riders) {
-      return RiderSignupStepper(
-        onRegistered: () {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
-          );
-        },
-      );
-    }
-
     final checkboxTheme = CheckboxThemeData(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
       side: const BorderSide(color: Color(0xFFC9C9C9), width: 1.2),
@@ -177,16 +102,6 @@ class _SignupScreenState extends State<SignupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {
-                    setState(() => _portal = null);
-                    WidgetsBinding.instance.addPostFrameCallback((_) => _pickPortal());
-                  },
-                  child: const Text('Change account type'),
-                ),
-              ),
               Text('Welcome.', style: AuthFormStyles.sheetTitleStyle()),
               const SizedBox(height: 28),
               AuthLabeledField(
@@ -196,15 +111,10 @@ class _SignupScreenState extends State<SignupScreen> {
                   keyboardType: TextInputType.name,
                   textCapitalization: TextCapitalization.words,
                   style: const TextStyle(fontSize: 15),
-                  decoration: AuthFormStyles.outlineDecoration(
-                    hint: 'Your full name',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your name';
-                    }
-                    return null;
-                  },
+                  decoration:
+                      AuthFormStyles.outlineDecoration(hint: 'Your full name'),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? 'Please enter your name' : null,
                 ),
               ),
               AuthLabeledField(
@@ -213,15 +123,11 @@ class _SignupScreenState extends State<SignupScreen> {
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
                   style: const TextStyle(fontSize: 15),
-                  decoration: AuthFormStyles.outlineDecoration(
-                    hint: '+2547XXXXXXXX',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your phone number';
-                    }
-                    return null;
-                  },
+                  decoration:
+                      AuthFormStyles.outlineDecoration(hint: '+2547XXXXXXXX'),
+                  validator: (v) => v == null || v.isEmpty
+                      ? 'Please enter your phone number'
+                      : null,
                 ),
               ),
               AuthLabeledField(
@@ -235,17 +141,17 @@ class _SignupScreenState extends State<SignupScreen> {
                     hint: 'Street, city, area',
                   ).copyWith(
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.place_outlined, color: Color(0xFF8E8E8E)),
+                      icon: const Icon(
+                        Icons.place_outlined,
+                        color: Color(0xFF8E8E8E),
+                      ),
                       onPressed: _pickAddress,
                       tooltip: 'Search address',
                     ),
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your delivery address';
-                    }
-                    return null;
-                  },
+                  validator: (v) => v == null || v.trim().isEmpty
+                      ? 'Please enter your delivery address'
+                      : null,
                 ),
               ),
               Theme(
@@ -260,27 +166,15 @@ class _SignupScreenState extends State<SignupScreen> {
                         height: 28,
                         child: Checkbox(
                           value: _agreedToTerms,
-                          onChanged: (v) {
-                            setState(() {
-                              _agreedToTerms = v ?? false;
-                            });
-                          },
-                          fillColor: WidgetStateProperty.resolveWith((states) {
-                            if (states.contains(WidgetState.selected)) {
-                              return const Color(0xFF0D0D0D);
-                            }
-                            return Colors.transparent;
-                          }),
+                          onChanged: (v) =>
+                              setState(() => _agreedToTerms = v ?? false),
                         ),
                       ),
                     ),
                     Expanded(
                       child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _agreedToTerms = !_agreedToTerms;
-                          });
-                        },
+                        onTap: () =>
+                            setState(() => _agreedToTerms = !_agreedToTerms),
                         child: const Padding(
                           padding: EdgeInsets.only(top: 6),
                           child: Text(
@@ -288,7 +182,6 @@ class _SignupScreenState extends State<SignupScreen> {
                             style: TextStyle(
                               fontSize: 13,
                               color: Color(0xFF8E8E8E),
-                              height: 1.35,
                             ),
                           ),
                         ),
@@ -307,7 +200,6 @@ class _SignupScreenState extends State<SignupScreen> {
               Center(
                 child: Wrap(
                   alignment: WrapAlignment.center,
-                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       'Already a member? ',
@@ -317,19 +209,11 @@ class _SignupScreenState extends State<SignupScreen> {
                       onPressed: () {
                         Navigator.of(context).pushReplacement(
                           MaterialPageRoute(
-                            builder: (context) => const LoginScreen(),
+                            builder: (_) => const LoginScreen(),
                           ),
                         );
                       },
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: Text(
-                        'Sign in',
-                        style: AuthFormStyles.linkStyle(),
-                      ),
+                      child: Text('Sign in', style: AuthFormStyles.linkStyle()),
                     ),
                   ],
                 ),

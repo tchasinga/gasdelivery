@@ -1,24 +1,14 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter_android/google_maps_flutter_android.dart';
-import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
 import 'screens/customer_accounts/home_screen.dart';
 import 'screens/login_screen.dart';
-import 'screens/riders/rider_home_screen.dart';
+import 'utils/maps_android_init.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Hybrid composition (false) is more reliable on emulators; true can show a blank beige map.
-  if (Platform.isAndroid) {
-    final impl = GoogleMapsFlutterPlatform.instance;
-    if (impl is GoogleMapsFlutterAndroid) {
-      impl.useAndroidViewSurface = false;
-    }
-  }
+  await configureGoogleMapsAndroid();
   runApp(const MyApp());
 }
 
@@ -65,9 +55,6 @@ class AuthWrapper extends StatelessWidget {
         }
 
         if (authProvider.isAuthenticated) {
-          if (authProvider.isRiderSession) {
-            return const RiderHomeScreen();
-          }
           return const HomeScreen();
         } else {
           return const LoginScreen();
