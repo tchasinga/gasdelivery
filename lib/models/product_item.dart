@@ -23,6 +23,11 @@ class ProductItem {
   final String? productDescription;
   final int? cylinderSizeId;
 
+  bool get isAccessory => productCategory == 'accessories';
+
+  String get displayVariant =>
+      isAccessory ? 'Accessories' : productVariant;
+
   factory ProductItem.fromJson(Map<String, dynamic> json) {
     double parsePrice(dynamic raw) {
       if (raw is num) return raw.toDouble();

@@ -431,7 +431,7 @@ class _ProductGrid extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    p.productVariant,
+                    p.displayVariant,
                     style: const TextStyle(color: Colors.black54),
                   ),
                   Text(

@@ -436,9 +436,10 @@ class ApiService {
   static Future<Map<String, dynamic>> placeCustomerDeliveryOrder({
     required String token,
     required int miniWarehouseId,
-    required int quantityRequested,
-    required String cylinderSize,
+    int? quantityRequested,
+    String? cylinderSize,
     bool isOutright = false,
+    List<Map<String, dynamic>>? lineItems,
     String? notes,
     int? customerAccountAddressHolderId,
     String? deliveryAddress,
@@ -446,22 +447,28 @@ class ApiService {
     double? deliveryLng,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/customer-delivery/orders'),
-        headers: _authHeaders(token),
-        body: jsonEncode({
-          'mini_warehouse_id': miniWarehouseId,
+      final body = <String, dynamic>{
+        'mini_warehouse_id': miniWarehouseId,
+        if (lineItems != null && lineItems.isNotEmpty)
+          'line_items': lineItems
+        else ...{
           'quantity_requested': quantityRequested,
           'cylinder_size': cylinderSize,
           'is_outright': isOutright,
-          if (notes != null) 'notes': notes,
-          if (customerAccountAddressHolderId != null)
-            'customer_account_address_holder_id': customerAccountAddressHolderId,
-          if (deliveryAddress != null && deliveryAddress.isNotEmpty)
-            'delivery_address': deliveryAddress,
-          if (deliveryLat != null) 'delivery_lat': deliveryLat,
-          if (deliveryLng != null) 'delivery_lng': deliveryLng,
-        }),
+        },
+        if (notes != null) 'notes': notes,
+        if (customerAccountAddressHolderId != null)
+          'customer_account_address_holder_id': customerAccountAddressHolderId,
+        if (deliveryAddress != null && deliveryAddress.isNotEmpty)
+          'delivery_address': deliveryAddress,
+        if (deliveryLat != null) 'delivery_lat': deliveryLat,
+        if (deliveryLng != null) 'delivery_lng': deliveryLng,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/customer-delivery/orders'),
+        headers: _authHeaders(token),
+        body: jsonEncode(body),
       );
       final data = jsonDecode(response.body);
       if (response.statusCode == 201 && data['success'] == true) {

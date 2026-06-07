@@ -225,17 +225,25 @@ class _MyCartScreenState extends State<MyCartScreen> {
     final token = await AuthService.getToken();
     if (token == null) return;
     setState(() => _placingOrder = true);
-    final firstLpg = cart.lines.first.product;
-    final qty = cart.lines.fold<int>(0, (sum, line) => sum + line.quantity);
-    final isOutright = firstLpg.productGroupType == 'outright';
+    final lineItems = cart.lines
+        .map(
+          (line) => {
+            'product_id': line.product.productId,
+            'product_name': line.product.productName,
+            'product_category': line.product.productCategory,
+            'product_variant': line.product.displayVariant,
+            'product_group_type': line.product.productGroupType,
+            'quantity': line.quantity,
+            'unit_price': line.product.productPrices,
+          },
+        )
+        .toList();
     final (lat, lng) = _resolveAddressOrDeviceCoords();
     final addressHolderId = _toInt(_selectedAddress!['id']);
     final res = await ApiService.placeCustomerDeliveryOrder(
       token: token,
       miniWarehouseId: _toInt(_selectedWarehouse!['id']),
-      quantityRequested: qty,
-      cylinderSize: firstLpg.productVariant,
-      isOutright: isOutright,
+      lineItems: lineItems,
       notes: 'Cart checkout with ${cart.itemCount} item(s)',
       customerAccountAddressHolderId: addressHolderId > 0 ? addressHolderId : null,
       deliveryAddress: _formatDeliveryAddress(_selectedAddress!),
@@ -305,7 +313,7 @@ class _MyCartScreenState extends State<MyCartScreen> {
                           : const Icon(Icons.propane_tank_outlined),
                       title: Text(line.product.productName),
                       subtitle: Text(
-                        '${line.product.productVariant} • KES ${line.product.productPrices.toStringAsFixed(2)}',
+                        '${line.product.displayVariant} • KES ${line.product.productPrices.toStringAsFixed(2)}',
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,

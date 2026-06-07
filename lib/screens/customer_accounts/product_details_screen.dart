@@ -114,7 +114,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        '${_selected.productVariant} added to cart',
+                        '${_selected.displayVariant} added to cart',
                       ),
                       backgroundColor: Colors.green,
                     ),
@@ -191,7 +191,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   final selected = item.productId == _selected.productId;
                   return ChoiceChip(
                     selected: selected,
-                    label: Text(item.productVariant),
+                    label: Text(item.displayVariant),
                     onSelected: (_) => setState(() {
                       _selected = item;
                       _currentImageIndex = 0;
@@ -229,7 +229,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               padding: const EdgeInsets.all(14),
               child: Row(
                 children: [
-                  Text('Cylinder size: LPG ${_selected.productVariant}'),
+                  Text(
+                    _selected.isAccessory
+                        ? 'Category: Accessories'
+                        : 'Cylinder size: LPG ${_selected.productVariant}',
+                  ),
                   const Spacer(),
                   Text('KES ${_selected.productPrices.toStringAsFixed(2)}'),
                 ],
