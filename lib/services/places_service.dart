@@ -5,10 +5,10 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 
 class PlacesService {
-  static const String apiKey = 'AIzaSyC_tn_IK4hjPvbzQSp66E2MIgmBXm1fOck' ;
+  static const String apiKey = 'AIzaSyC_tn_IK4hjPvbzQSp66E2MIgmBXm1fOck';
   static const String baseUrl = 'https://maps.googleapis.com/maps/api';
 
-  /// Roadmap preview (Static Maps API). Falls back in UI if the request fails. AIzaSyBX0jOQy-mSvUKVvaE6vCcF_q75ehMA8_U  AIzaSyC_tn_IK4hjPvbzQSp66E2MIgmBXm1fOck
+  /// Roadmap preview (Static Maps API). Falls back in UI if the request fails.
   static String staticMapUrl({
     double latitude = -1.286389,
     double longitude = 36.817223,

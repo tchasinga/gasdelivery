@@ -22,26 +22,15 @@ class _MiniWarehouseListScreenState extends State<MiniWarehouseListScreen>
   static const _brand = Color(0xFF014F5B);
   late final TabController _tabController;
   int? _selectedId;
-  bool _mapTabVisible = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(_onTabChanged);
-  }
-
-  void _onTabChanged() {
-    if (_tabController.indexIsChanging) return;
-    final visible = _tabController.index == 1;
-    if (visible != _mapTabVisible && mounted) {
-      setState(() => _mapTabVisible = visible);
-    }
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -110,17 +99,15 @@ class _MiniWarehouseListScreenState extends State<MiniWarehouseListScreen>
               );
             },
           ),
-          _mapTabVisible
-              ? GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: LatLng(widget.currentLat, widget.currentLng),
-                    zoom: 12.5,
-                  ),
-                  markers: markers,
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: true,
-                )
-              : const ColoredBox(color: Color(0xFFE8F4F6)),
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: LatLng(widget.currentLat, widget.currentLng),
+              zoom: 12.5,
+            ),
+            markers: markers,
+            myLocationEnabled: true,
+            myLocationButtonEnabled: true,
+          ),
         ],
       ),
       bottomNavigationBar: SafeArea(
