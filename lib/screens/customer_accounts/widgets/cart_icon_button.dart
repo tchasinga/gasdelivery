@@ -5,10 +5,7 @@ import '../../../providers/cart_provider.dart';
 import '../my_cart_screen.dart';
 
 class CartIconButton extends StatelessWidget {
-  const CartIconButton({
-    super.key,
-    this.iconColor,
-  });
+  const CartIconButton({super.key, this.iconColor});
 
   final Color? iconColor;
 
@@ -20,14 +17,11 @@ class CartIconButton extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             IconButton(
-              icon: Icon(
-                Icons.shopping_cart_outlined,
-                color: iconColor,
-              ),
+              icon: Icon(Icons.shopping_cart_outlined, color: iconColor),
               onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const MyCartScreen()),
-                );
+                Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const MyCartScreen()));
               },
             ),
             if (cart.itemCount > 0)
@@ -35,7 +29,10 @@ class CartIconButton extends StatelessWidget {
                 right: 6,
                 top: 6,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.red,
                     borderRadius: BorderRadius.circular(999),
@@ -56,4 +53,3 @@ class CartIconButton extends StatelessWidget {
     );
   }
 }
-

@@ -14,11 +14,11 @@ class ProfileTabScreen extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context);
     final customer = authProvider.customerData;
     final name = customer?['account_customer_name'] as String? ?? 'Customer';
-    final phone =
-        customer?['account_customer_phone_number'] as String? ?? '—';
+    final phone = customer?['account_customer_phone_number'] as String? ?? '—';
     final trimmed = name.trim();
-    final initial =
-        trimmed.isEmpty ? '?' : trimmed.substring(0, 1).toUpperCase();
+    final initial = trimmed.isEmpty
+        ? '?'
+        : trimmed.substring(0, 1).toUpperCase();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
@@ -66,17 +66,14 @@ class ProfileTabScreen extends StatelessWidget {
                     name,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: _brand,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: _brand,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     phone,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey.shade700,
-                    ),
+                    style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
                   ),
                 ],
               ),
@@ -119,7 +116,9 @@ class ProfileTabScreen extends StatelessWidget {
                 await authProvider.logout();
                 if (context.mounted) {
                   Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const LoginScreen(),
+                    ),
                     (route) => false,
                   );
                 }

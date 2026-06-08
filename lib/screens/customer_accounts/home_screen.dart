@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
-import '../../services/api_services.dart';
-import '../../services/auth_service.dart';
-import 'return_tab_screen.dart';
+import '../../providers/cart_provider.dart';
+import '../../utils/repeat_order_helper.dart';
 import 'map_tab_screen.dart';
+import 'my_cart_screen.dart';
+import 'my_orders_screen.dart';
 import 'order_screen.dart';
 import 'profile_tab_screen.dart';
+import 'return_tab_screen.dart';
+import 'widgets/app_bottom_nav_bar.dart';
 import 'widgets/cart_icon_button.dart';
+import 'widgets/home_image_carousel.dart';
 
-/// Bottom tabs: Home, Map, Orders, Return, Profile.
+/// Bottom tabs: Home, Map, Return, Profile.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -19,607 +23,285 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const _tabCount = 4;
+
   int _currentIndex = 0;
 
-  late final List<Widget> _tabs = [
-    const HomeTabScreen(),
-    const MapTabScreen(),
-    const OrderScreen(),
-    const ReturnTabScreen(),
-    const ProfileTabScreen(),
+  static const _navItems = [
+    AppBottomNavItem(
+      icon: Icons.home_outlined,
+      activeIcon: Icons.home_rounded,
+      label: 'Home',
+    ),
+    AppBottomNavItem(
+      icon: Icons.map_outlined,
+      activeIcon: Icons.map_rounded,
+      label: 'Map',
+    ),
+    AppBottomNavItem(
+      icon: Icons.keyboard_return_outlined,
+      activeIcon: Icons.keyboard_return_rounded,
+      label: 'Return',
+    ),
+    AppBottomNavItem(
+      icon: Icons.person_outline_rounded,
+      activeIcon: Icons.person_rounded,
+      label: 'Profile',
+    ),
   ];
 
   void _goToTab(int index) {
-    if (index < 0 || index >= _tabs.length) return;
+    if (index < 0 || index >= _tabCount) return;
     setState(() => _currentIndex = index);
   }
 
+  void _openOrderProducts() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const OrderScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7F8),
       body: IndexedStack(
         index: _currentIndex,
-        children: _tabs,
-      ),
-      floatingActionButton: _currentIndex == 2
-          ? null
-          : Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 10),
-                ],
-              ),
-              child: const CartIconButton(),
-            ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: _goToTab,
-        height: 72,
-        backgroundColor: Colors.white,
-        indicatorColor: const Color(0xFFE8F4F6),
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        surfaceTintColor: Colors.transparent,
-        shadowColor: Colors.black26,
-        elevation: 8,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Home',
+        children: [
+          HomeTabScreen(
+            onPlaceNewOrder: _openOrderProducts,
+            onFollowOngoingOrder: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const MyOrdersScreen(initialTab: 0),
+                ),
+              );
+            },
           ),
-          NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map_rounded),
-            label: 'Map',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.shopping_cart_outlined),
-            selectedIcon: Icon(Icons.shopping_cart_rounded),
-            label: 'Orders',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.keyboard_return_outlined),
-            selectedIcon: Icon(Icons.keyboard_return_rounded),
-            label: 'Return',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
-            label: 'Profile',
-          ),
+          const MapTabScreen(),
+          const ReturnTabScreen(),
+          const ProfileTabScreen(),
         ],
+      ),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.paddingOf(context).bottom + 76,
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF014F5B), Color(0xFF02788D)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF014F5B).withValues(alpha: 0.35),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const CartIconButton(iconColor: Colors.white),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      bottomNavigationBar: AppBottomNavBar(
+        currentIndex: _currentIndex,
+        onTap: _goToTab,
+        items: _navItems,
       ),
     );
   }
 }
 
-class HomeTabScreen extends StatefulWidget {
-  const HomeTabScreen({super.key});
+class HomeTabScreen extends StatelessWidget {
+  const HomeTabScreen({
+    super.key,
+    required this.onPlaceNewOrder,
+    required this.onFollowOngoingOrder,
+  });
 
-  @override
-  State<HomeTabScreen> createState() => _HomeTabScreenState();
-}
+  final VoidCallback onPlaceNewOrder;
+  final VoidCallback onFollowOngoingOrder;
 
-class _HomeTabScreenState extends State<HomeTabScreen> {
   static const Color _brand = Color(0xFF014F5B);
 
-  int _cylinderCount = 0;
-  List<Map<String, dynamic>> _cylinders = [];
-  bool _loadingCylinders = true;
-  String? _cylinderError;
+  Future<void> _repeatPreviousOrder(BuildContext context) async {
+    final cart = context.read<CartProvider>();
+    final messenger = ScaffoldMessenger.of(context);
 
-  @override
-  void initState() {
-    super.initState();
-    _loadCylinders();
-  }
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Loading your last order…'),
+        duration: Duration(seconds: 2),
+      ),
+    );
 
-  Future<void> _refreshPage() async {
-    final authProvider = context.read<AuthProvider>();
-    await Future.wait([
-      _loadCylinders(),
-      authProvider.checkAuthStatus(),
-    ]);
-  }
+    final result = await RepeatOrderHelper.loadMostRecentCompletedOrder(cart);
+    if (!context.mounted) return;
 
-  Future<void> _loadCylinders() async {
-    setState(() {
-      _loadingCylinders = true;
-      _cylinderError = null;
-    });
-
-    final token = await AuthService.getToken();
-    if (token == null || token.isEmpty) {
-      if (!mounted) return;
-      setState(() {
-        _loadingCylinders = false;
-        _cylinderError = 'Not signed in';
-      });
+    if (!result.success) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(result.message ?? 'Could not repeat order.')),
+      );
       return;
     }
 
-    final result = await ApiService.getCustomerCylinderCount(token);
-    if (!mounted) return;
-
-    setState(() {
-      _loadingCylinders = false;
-      if (result['success'] == true) {
-        final list = result['cylinders'];
-        _cylinders = list is List<Map<String, dynamic>>
-            ? list
-            : (list is List
-                ? list
-                    .whereType<Map>()
-                    .map((e) => Map<String, dynamic>.from(e))
-                    .toList()
-                : []);
-        _cylinderCount = result['cylinder_count'] as int? ?? _cylinders.length;
-      } else {
-        _cylinderError = result['message'] as String? ?? 'Could not load cylinders';
-      }
-    });
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const MyCartScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
+    final authProvider = context.watch<AuthProvider>();
     final customerData = authProvider.customerData;
-    final displayName = customerData?['account_customer_name'] ?? 'Customer';
+    final displayName = customerData?['account_customer_name']
+        ?.toString()
+        .trim();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
-      body: RefreshIndicator(
-        onRefresh: _refreshPage,
-        color: _brand,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverAppBar.large(
-              expandedHeight: 200,
-              pinned: true,
-              backgroundColor: _brand,
-              foregroundColor: Colors.white,
-              actions: [
-                IconButton(
-                  tooltip: 'Refresh',
-                  icon: const Icon(Icons.refresh),
-                  onPressed: _refreshPage,
-                ),
-              ],
-              flexibleSpace: FlexibleSpaceBar(
-                titlePadding: const EdgeInsetsDirectional.only(
-                  start: 20,
-                  bottom: 16,
-                  end: 20,
-                ),
-                background: DecoratedBox(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF014F5B),
-                        Color(0xFF02788D),
-                      ],
-                    ),
-                  ),
-                  child: SafeArea(
-                    bottom: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 56, 24, 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(
-                            'Welcome back',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            displayName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              height: 1.15,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Order gas in a few taps — anywhere, anytime.',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.88),
-                              fontSize: 14,
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+      appBar: AppBar(
+        backgroundColor: _brand,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Home'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        children: [
+          const HomeImageCarousel(),
+          const SizedBox(height: 28),
+          Text(
+            displayName != null && displayName.isNotEmpty
+                ? 'Hello $displayName,'
+                : 'Hello,',
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              color: _brand,
+              height: 1.2,
             ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Your cylinders',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: _brand,
-                          ),
-                        ),
-                      ),
-                      if (!_loadingCylinders && _cylinderError == null)
-                        Text(
-                          '$_cylinderCount',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: _brand,
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  _MyCylindersSection(
-                    loading: _loadingCylinders,
-                    cylinders: _cylinders,
-                    error: _cylinderError,
-                    onRetry: _loadCylinders,
-                  ),
-                  const SizedBox(height: 28),
-                  const Text(
-                    'How it works',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: _brand,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  const _StepCard(
-                    step: '1',
-                    title: 'Choose quantity',
-                    body: 'Pick cylinder size and delivery window.',
-                  ),
-                  const SizedBox(height: 10),
-                  const _StepCard(
-                    step: '2',
-                    title: 'Confirm address',
-                    body: 'We use your saved location for faster checkout.',
-                  ),
-                  const SizedBox(height: 10),
-                  const _StepCard(
-                    step: '3',
-                    title: 'Pay on delivery',
-                    body: 'Pay for your gas on delivery.',
-                  ),
-                ]),
-              ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Thanks for visiting TaifaGas',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey.shade800,
+              height: 1.35,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Would like to place an order?',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey.shade600,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 28),
+          _HomeActionCard(
+            icon: Icons.add_shopping_cart_rounded,
+            iconColor: _brand,
+            title: 'Place new order',
+            subtitle: 'Few clicks away',
+            onTap: onPlaceNewOrder,
+          ),
+          const SizedBox(height: 12),
+          _HomeActionCard(
+            icon: Icons.replay_rounded,
+            iconColor: const Color(0xFF02788D),
+            title: 'Repeat my Previous Orders',
+            subtitle: 'Reorder your last delivery',
+            onTap: () => _repeatPreviousOrder(context),
+          ),
+          const SizedBox(height: 12),
+          _HomeActionCard(
+            icon: Icons.local_shipping_outlined,
+            iconColor: Colors.orange.shade800,
+            title: 'Follow my Ongoing order',
+            subtitle: 'Track active deliveries',
+            onTap: onFollowOngoingOrder,
+          ),
+        ],
       ),
     );
   }
 }
 
-class _MyCylindersSection extends StatelessWidget {
-  const _MyCylindersSection({
-    required this.loading,
-    required this.cylinders,
-    required this.error,
-    required this.onRetry,
+class _HomeActionCard extends StatelessWidget {
+  const _HomeActionCard({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
   });
 
-  final bool loading;
-  final List<Map<String, dynamic>> cylinders;
-  final String? error;
-  final VoidCallback onRetry;
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
 
-  static const Color _brand = Color(0xFF014F5B);
+  static const _brand = Color(0xFF014F5B);
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
-      return const Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.all(Radius.circular(18)),
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Center(
-            child: SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(strokeWidth: 2, color: _brand),
-            ),
-          ),
-        ),
-      );
-    }
-
-    if (error != null) {
-      return Material(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      elevation: 3,
+      shadowColor: _brand.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(error!, style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
-              const SizedBox(height: 8),
-              TextButton(onPressed: onRetry, child: const Text('Retry')),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (cylinders.isEmpty) {
-      return Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(18),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8F4F6),
+                  color: iconColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.propane_tank_outlined, size: 28, color: _brand),
+                child: Icon(icon, color: iconColor, size: 28),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 16),
               Expanded(
-                child: Text(
-                  'No cylinders with you yet. Place an order to receive gas.',
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: _brand,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
             ],
           ),
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        for (var i = 0; i < cylinders.length; i++) ...[
-          if (i > 0) const SizedBox(height: 10),
-          _CylinderDetailCard(cylinder: cylinders[i]),
-        ],
-      ],
-    );
-  }
-}
-
-class _CylinderDetailCard extends StatelessWidget {
-  const _CylinderDetailCard({required this.cylinder});
-
-  final Map<String, dynamic> cylinder;
-
-  static const Color _brand = Color(0xFF014F5B);
-
-  String _formatDeliveredAt(String? iso) {
-    if (iso == null || iso.isEmpty) return '—';
-    try {
-      final dt = DateTime.parse(iso).toLocal();
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      final h = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
-      final ampm = dt.hour >= 12 ? 'PM' : 'AM';
-      final min = dt.minute.toString().padLeft(2, '0');
-      return '${months[dt.month - 1]} ${dt.day}, ${dt.year} · $h:$min $ampm';
-    } catch (_) {
-      return iso;
-    }
-  }
-
-  String _titleCase(String value) {
-    if (value.isEmpty) return value;
-    return value[0].toUpperCase() + value.substring(1).replaceAll('_', ' ');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final serial = cylinder['serial_number']?.toString() ?? '—';
-    final size = cylinder['size']?.toString() ?? 'Unknown';
-    final capacity = cylinder['capacity_kg'];
-    final capacityLabel = capacity != null ? ' · ${capacity}kg' : '';
-    final condition = _titleCase(cylinder['condition']?.toString() ?? '—');
-    final isEmpty = cylinder['is_empty'] == true;
-    final fillLabel = isEmpty ? 'Empty' : 'Filled';
-    final fillColor = isEmpty ? Colors.orange.shade800 : Colors.green.shade700;
-    final fillBg = isEmpty ? Colors.orange.shade50 : Colors.green.shade50;
-    final deliveredAt = _formatDeliveredAt(cylinder['delivered_at']?.toString());
-
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F4F6),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.propane_tank, size: 26, color: _brand),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        serial,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: _brand,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$size$capacityLabel',
-                        style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: fillBg,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    fillLabel,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: fillColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
-            _DetailRow(label: 'Condition', value: condition),
-            const SizedBox(height: 8),
-            _DetailRow(
-              label: 'Delivered',
-              value: deliveredAt,
-              icon: Icons.local_shipping_outlined,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.label,
-    required this.value,
-    this.icon,
-  });
-
-  final String label;
-  final String value;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        if (icon != null) ...[
-          Icon(icon, size: 16, color: Colors.grey.shade600),
-          const SizedBox(width: 6),
-        ],
-        Text(
-          '$label: ',
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StepCard extends StatelessWidget {
-  const _StepCard({
-    required this.step,
-    required this.title,
-    required this.body,
-  });
-
-  final String step;
-  final String title;
-  final String body;
-
-  static const Color _brand = Color(0xFF014F5B);
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: const Color(0xFFE8F4F6),
-              child: Text(
-                step,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: _brand,
-                ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                      color: _brand,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    body,
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.4,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ),
       ),
     );
