@@ -98,7 +98,7 @@ class _OrderScreenState extends State<OrderScreen>
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
           tabs: const [
-            Tab(child: Text('LPG', style: TextStyle(color: Colors.white))),
+            Tab(child: Text('Gas', style: TextStyle(color: Colors.white))),
             Tab(
               child: Text('Accessories', style: TextStyle(color: Colors.white)),
             ),
