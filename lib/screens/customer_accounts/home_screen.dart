@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../utils/repeat_order_helper.dart';
+import 'help_tab_screen.dart';
+import 'history_tab_screen.dart';
 import 'map_tab_screen.dart';
 import 'my_cart_screen.dart';
 import 'my_orders_screen.dart';
@@ -14,7 +16,7 @@ import 'widgets/app_bottom_nav_bar.dart';
 import 'widgets/cart_icon_button.dart';
 import 'widgets/home_image_carousel.dart';
 
-/// Bottom tabs: Home, Map, Return, Profile.
+/// Bottom tabs: Home, Help, History, Profile. [Map] and [Return] are hidden by default.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -23,35 +25,67 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const _tabCount = 4;
+  // --- Tab visibility: flip to `true` to restore hidden tabs ---
+  static const bool _kShowMapTab = false;
+  static const bool _kShowReturnTab = false;
 
   int _currentIndex = 0;
 
-  static const _navItems = [
-    AppBottomNavItem(
+  List<AppBottomNavItem> get _navItems => [
+    const AppBottomNavItem(
       icon: Icons.home_outlined,
       activeIcon: Icons.home_rounded,
       label: 'Home',
     ),
-    AppBottomNavItem(
-      icon: Icons.map_outlined,
-      activeIcon: Icons.map_rounded,
-      label: 'Map',
+    const AppBottomNavItem(
+      icon: Icons.help_outline_rounded,
+      activeIcon: Icons.help_rounded,
+      label: 'Help',
     ),
-    AppBottomNavItem(
-      icon: Icons.keyboard_return_outlined,
-      activeIcon: Icons.keyboard_return_rounded,
-      label: 'Return',
+    const AppBottomNavItem(
+      icon: Icons.history_rounded,
+      activeIcon: Icons.history,
+      label: 'History',
     ),
-    AppBottomNavItem(
+    if (_kShowMapTab)
+      const AppBottomNavItem(
+        icon: Icons.map_outlined,
+        activeIcon: Icons.map_rounded,
+        label: 'Map',
+      ),
+    if (_kShowReturnTab)
+      const AppBottomNavItem(
+        icon: Icons.keyboard_return_outlined,
+        activeIcon: Icons.keyboard_return_rounded,
+        label: 'Return',
+      ),
+    const AppBottomNavItem(
       icon: Icons.person_outline_rounded,
       activeIcon: Icons.person_rounded,
       label: 'Profile',
     ),
   ];
 
+  List<Widget> _tabBodies() => [
+        HomeTabScreen(
+          onPlaceNewOrder: _openOrderProducts,
+          onFollowOngoingOrder: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const MyOrdersScreen(initialTab: 0),
+              ),
+            );
+          },
+        ),
+        const HelpTabScreen(),
+        const HistoryTabScreen(),
+        if (_kShowMapTab) const MapTabScreen(),
+        if (_kShowReturnTab) const ReturnTabScreen(),
+        const ProfileTabScreen(),
+      ];
+
   void _goToTab(int index) {
-    if (index < 0 || index >= _tabCount) return;
+    if (index < 0 || index >= _navItems.length) return;
     setState(() => _currentIndex = index);
   }
 
@@ -67,21 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: const Color(0xFFF5F7F8),
       body: IndexedStack(
         index: _currentIndex,
-        children: [
-          HomeTabScreen(
-            onPlaceNewOrder: _openOrderProducts,
-            onFollowOngoingOrder: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const MyOrdersScreen(initialTab: 0),
-                ),
-              );
-            },
-          ),
-          const MapTabScreen(),
-          const ReturnTabScreen(),
-          const ProfileTabScreen(),
-        ],
+        children: _tabBodies(),
       ),
       floatingActionButton: Padding(
         padding: EdgeInsets.only(

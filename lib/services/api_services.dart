@@ -424,6 +424,59 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> getCustomerAccountHistory(
+    String token,
+  ) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/customer-account/history'),
+        headers: _authHeaders(token),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {
+          'success': true,
+          'history': (data['history'] as List? ?? [])
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList(),
+        };
+      }
+      return {'success': false, 'message': _firstApiErrorMessage(data)};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> submitCustomerMessage({
+    required String token,
+    required String subject,
+    required String category,
+    required String message,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/customer-account/messages'),
+        headers: _authHeaders(token),
+        body: jsonEncode({
+          'customer_accounts_subject': subject,
+          'customer_accounts_category': category,
+          'customer_accounts_message': message,
+        }),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 201 && data['success'] == true) {
+        return {
+          'success': true,
+          'message': data['message']?.toString() ?? 'Message sent',
+        };
+      }
+      return {'success': false, 'message': _firstApiErrorMessage(data)};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
 
   static Future<Map<String, dynamic>> getCustomerProducts({
     required String token,
