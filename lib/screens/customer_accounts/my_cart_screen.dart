@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../services/api_services.dart';
 import '../../services/auth_service.dart';
+import '../../utils/auth_gatekeeper.dart';
 import 'mini_warehouse_list_screen.dart';
 import 'my_addresses_screen.dart';
 
@@ -22,6 +24,7 @@ class _MyCartScreenState extends State<MyCartScreen> {
   Map<String, dynamic>? _selectedWarehouse;
   bool _loadingWarehouse = false;
   bool _placingOrder = false;
+  bool _warehouseManuallySelected = false;
   double? _deviceLat;
   double? _deviceLng;
 
@@ -36,10 +39,12 @@ class _MyCartScreenState extends State<MyCartScreen> {
     if (token == null) return;
     final addrRes = await ApiService.getCustomerAddresses(token);
     if (addrRes['success'] == true) {
-      final addresses = (addrRes['addresses'] as List).cast<Map<String, dynamic>>();
+      final addresses = (addrRes['addresses'] as List)
+          .cast<Map<String, dynamic>>();
       final fallback = addresses.firstWhere(
         (a) => a['is_default'] == true,
-        orElse: () => addresses.isNotEmpty ? addresses.first : <String, dynamic>{},
+        orElse: () =>
+            addresses.isNotEmpty ? addresses.first : <String, dynamic>{},
       );
       if (fallback.isNotEmpty) {
         _selectedAddress = fallback;
@@ -65,16 +70,50 @@ class _MyCartScreenState extends State<MyCartScreen> {
     if (!mounted) return;
     setState(() {
       _loadingWarehouse = false;
-      if (res['success'] == true) {
-        final list = (res['mini_warehouses'] as List).cast<Map<String, dynamic>>();
-        if (list.isNotEmpty) {
-          _selectedWarehouse = list.first;
-        }
-      }
+      if (res['success'] != true) return;
+
+      final list = (res['mini_warehouses'] as List)
+          .cast<Map<String, dynamic>>();
+      if (list.isEmpty) return;
+
+      _selectedWarehouse = list.first;
+      _warehouseManuallySelected = false;
     });
   }
 
+  /// Loads address/warehouse only when missing. Never overwrites a manual shop pick.
+  Future<void> _ensureCheckoutReady() async {
+    final token = await AuthService.getToken();
+    if (token == null) return;
+
+    if (_selectedAddress == null || _selectedAddress!.isEmpty) {
+      final addrRes = await ApiService.getCustomerAddresses(token);
+      if (addrRes['success'] == true) {
+        final addresses = (addrRes['addresses'] as List)
+            .cast<Map<String, dynamic>>();
+        final fallback = addresses.firstWhere(
+          (a) => a['is_default'] == true,
+          orElse: () =>
+              addresses.isNotEmpty ? addresses.first : <String, dynamic>{},
+        );
+        if (fallback.isNotEmpty) {
+          _selectedAddress = fallback;
+        }
+      }
+    }
+
+    if (_selectedWarehouse == null) {
+      await _loadNearbyWarehouses();
+    }
+
+    if (mounted) setState(() {});
+  }
+
   Future<void> _pickAddress() async {
+    if (!await AuthGatekeeper.requireAuth(context) || !mounted) return;
+    await _ensureCheckoutReady();
+    if (!mounted) return;
+
     final selected = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(builder: (_) => const MyAddressesScreen()),
     );
@@ -82,12 +121,19 @@ class _MyCartScreenState extends State<MyCartScreen> {
     setState(() {
       _selectedAddress = selected;
       _selectedWarehouse = null;
+      _warehouseManuallySelected = false;
     });
     await _loadNearbyWarehouses();
   }
 
   Future<void> _pickWarehouse() async {
-    if (_selectedAddress == null) return;
+    if (!await AuthGatekeeper.requireAuth(context) || !mounted) return;
+    if (_selectedAddress == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a delivery address first.')),
+      );
+      return;
+    }
     final token = await AuthService.getToken();
     if (token == null) return;
     final (lat, lng) = _resolveAddressOrDeviceCoords();
@@ -99,7 +145,8 @@ class _MyCartScreenState extends State<MyCartScreen> {
       radiusKm: 5,
     );
     if (res['success'] != true) return;
-    final warehouses = (res['mini_warehouses'] as List).cast<Map<String, dynamic>>();
+    final warehouses = (res['mini_warehouses'] as List)
+        .cast<Map<String, dynamic>>();
     final selected = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
         builder: (_) => MiniWarehouseListScreen(
@@ -110,7 +157,10 @@ class _MyCartScreenState extends State<MyCartScreen> {
       ),
     );
     if (selected != null && mounted) {
-      setState(() => _selectedWarehouse = selected);
+      setState(() {
+        _selectedWarehouse = selected;
+        _warehouseManuallySelected = true;
+      });
     }
   }
 
@@ -136,7 +186,9 @@ class _MyCartScreenState extends State<MyCartScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Location permission is required to find nearby warehouses.'),
+          content: Text(
+            'Location permission is required to find nearby warehouses.',
+          ),
         ),
       );
       return;
@@ -149,13 +201,16 @@ class _MyCartScreenState extends State<MyCartScreen> {
     setState(() {
       _deviceLat = pos.latitude;
       _deviceLng = pos.longitude;
+      _warehouseManuallySelected = false;
     });
     await _loadNearbyWarehouses();
   }
 
   String _formatDeliveryAddress(Map<String, dynamic> address) {
-    final name = address['account_customer_address_name']?.toString().trim() ?? '';
-    final details = address['account_customer_address_details']?.toString().trim() ?? '';
+    final name =
+        address['account_customer_address_name']?.toString().trim() ?? '';
+    final details =
+        address['account_customer_address_details']?.toString().trim() ?? '';
     if (name.isEmpty) return details;
     if (details.isEmpty) return name;
     return '$name — $details';
@@ -171,10 +226,18 @@ class _MyCartScreenState extends State<MyCartScreen> {
       );
       return;
     }
+
+    if (!await AuthGatekeeper.requireAuth(context) || !mounted) return;
+
+    await _ensureCheckoutReady();
+    if (!mounted) return;
+
     if (_selectedAddress == null || _selectedAddress!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a delivery address before placing your order.'),
+          content: Text(
+            'Please select a delivery address before placing your order.',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -183,7 +246,9 @@ class _MyCartScreenState extends State<MyCartScreen> {
     if (_selectedWarehouse == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a mini warehouse before placing your order.'),
+          content: Text(
+            'Please select a mini warehouse before placing your order.',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -201,8 +266,11 @@ class _MyCartScreenState extends State<MyCartScreen> {
       builder: (ctx) => _PlaceOrderConfirmSheet(
         itemCount: cart.itemCount,
         itemTotal: cart.itemTotal,
-        addressLabel: _selectedAddress!['account_customer_address_name']?.toString() ?? 'Delivery address',
-        warehouseName: _selectedWarehouse!['name']?.toString() ?? 'Mini warehouse',
+        addressLabel:
+            _selectedAddress!['account_customer_address_name']?.toString() ??
+            'Delivery address',
+        warehouseName:
+            _selectedWarehouse!['name']?.toString() ?? 'Mini warehouse',
       ),
     );
 
@@ -216,7 +284,9 @@ class _MyCartScreenState extends State<MyCartScreen> {
     if (_selectedAddress == null || _selectedAddress!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a delivery address before placing your order.'),
+          content: Text(
+            'Please select a delivery address before placing your order.',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -245,7 +315,9 @@ class _MyCartScreenState extends State<MyCartScreen> {
       miniWarehouseId: _toInt(_selectedWarehouse!['id']),
       lineItems: lineItems,
       notes: 'Cart checkout with ${cart.itemCount} item(s)',
-      customerAccountAddressHolderId: addressHolderId > 0 ? addressHolderId : null,
+      customerAccountAddressHolderId: addressHolderId > 0
+          ? addressHolderId
+          : null,
       deliveryAddress: _formatDeliveryAddress(_selectedAddress!),
       deliveryLat: lat,
       deliveryLng: lng,
@@ -277,11 +349,14 @@ class _MyCartScreenState extends State<MyCartScreen> {
   }
 
   Future<void> _refreshPage() async {
+    _warehouseManuallySelected = false;
     await _loadDefaultAddressAndWarehouse();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isGuest = !context.watch<AuthProvider>().isAuthenticated;
+
     return Consumer<CartProvider>(
       builder: (context, cart, _) {
         return Scaffold(
@@ -292,24 +367,61 @@ class _MyCartScreenState extends State<MyCartScreen> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.refresh),
-                onPressed: _refreshPage,
+                onPressed: isGuest ? null : _refreshPage,
               ),
             ],
           ),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              const Text('Items in cart', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+              if (isGuest)
+                Card(
+                  color: const Color(0xFFE8F4F6),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, color: _brand),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Browsing as guest. Sign in when you place your order to set delivery details.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade800,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              if (isGuest) const SizedBox(height: 12),
+              const Text(
+                'Items in cart',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
               if (cart.lines.isEmpty)
-                const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No items in cart')))
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('No items in cart'),
+                  ),
+                )
               else
                 ...cart.lines.map((line) {
                   final key = cart.keyOf(line);
                   return Card(
                     child: ListTile(
                       leading: line.product.productImage?.isNotEmpty == true
-                          ? Image.network(line.product.productImage!, width: 44, height: 44, fit: BoxFit.cover)
+                          ? Image.network(
+                              line.product.productImage!,
+                              width: 44,
+                              height: 44,
+                              fit: BoxFit.cover,
+                            )
                           : const Icon(Icons.propane_tank_outlined),
                       title: Text(line.product.productName),
                       subtitle: Text(
@@ -318,9 +430,15 @@ class _MyCartScreenState extends State<MyCartScreen> {
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          IconButton(onPressed: () => cart.decrement(key), icon: const Icon(Icons.remove_circle_outline)),
+                          IconButton(
+                            onPressed: () => cart.decrement(key),
+                            icon: const Icon(Icons.remove_circle_outline),
+                          ),
                           Text('${line.quantity}'),
-                          IconButton(onPressed: () => cart.increment(key), icon: const Icon(Icons.add_circle_outline)),
+                          IconButton(
+                            onPressed: () => cart.increment(key),
+                            icon: const Icon(Icons.add_circle_outline),
+                          ),
                         ],
                       ),
                     ),
@@ -330,11 +448,21 @@ class _MyCartScreenState extends State<MyCartScreen> {
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.location_on_outlined),
-                  title: Text(_selectedAddress?['account_customer_address_name']?.toString() ?? 'Select address'),
+                  title: Text(
+                    _selectedAddress?['account_customer_address_name']
+                            ?.toString() ??
+                        (isGuest ? 'Delivery address' : 'Select address'),
+                  ),
                   subtitle: Text(
-                    _selectedAddress?['account_customer_address_details']?.toString().isNotEmpty == true
-                        ? _selectedAddress!['account_customer_address_details'].toString()
-                        : 'Tap to choose saved address',
+                    isGuest
+                        ? 'Sign in to choose a saved address'
+                        : (_selectedAddress?['account_customer_address_details']
+                                      ?.toString()
+                                      .isNotEmpty ==
+                                  true
+                            ? _selectedAddress!['account_customer_address_details']
+                                  .toString()
+                            : 'Tap to choose saved address'),
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _pickAddress,
@@ -344,24 +472,31 @@ class _MyCartScreenState extends State<MyCartScreen> {
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.local_gas_station),
-                  title: Text(_selectedWarehouse?['name']?.toString() ?? 'Select mini warehouse'),
+                  title: Text(
+                    _selectedWarehouse?['name']?.toString() ??
+                        (isGuest ? 'Mini warehouse' : 'Select mini warehouse'),
+                  ),
                   subtitle: Text(
-                    _loadingWarehouse
-                        ? 'Searching warehouses in 5km radius...'
-                        : (_selectedWarehouse?['distance_km'] != null
-                            ? '${_selectedWarehouse!['distance_km']} km away'
-                            : 'Tap to choose from nearby list'),
+                    isGuest
+                        ? 'Sign in to find nearby shops'
+                        : (_loadingWarehouse
+                              ? 'Searching warehouses in 5km radius...'
+                              : (_selectedWarehouse?['distance_km'] != null
+                                    ? '${_selectedWarehouse!['distance_km']} km away'
+                                    : 'Tap to choose from nearby list')),
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _pickWarehouse,
                 ),
               ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: _useCurrentLocation,
-                icon: const Icon(Icons.my_location),
-                label: const Text('Use my current location'),
-              ),
+              if (!isGuest) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _useCurrentLocation,
+                  icon: const Icon(Icons.my_location),
+                  label: const Text('Use my current location'),
+                ),
+              ],
               const SizedBox(height: 10),
               Card(
                 child: Padding(
@@ -369,8 +504,13 @@ class _MyCartScreenState extends State<MyCartScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Payment summary',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: _brand)),
+                      const Text(
+                        'Payment summary',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: _brand,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       _line('Item total', cart.itemTotal, bold: true),
                     ],
@@ -387,19 +527,19 @@ class _MyCartScreenState extends State<MyCartScreen> {
                   backgroundColor: _brand,
                   minimumSize: const Size.fromHeight(52),
                 ),
-                onPressed: (_placingOrder ||
-                        cart.lines.isEmpty ||
-                        _selectedAddress == null ||
-                        _selectedWarehouse == null)
+                onPressed: (_placingOrder || cart.lines.isEmpty)
                     ? null
                     : () => _onPlaceOrderPressed(cart),
                 child: _placingOrder
                     ? const SizedBox(
                         height: 22,
                         width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
-                    : const Text('Place order'),
+                    : Text(isGuest ? 'Sign in to place order' : 'Place order'),
               ),
             ),
           ),
@@ -462,10 +602,17 @@ class _PlaceOrderConfirmSheet extends StatelessWidget {
           const SizedBox(height: 8),
           const Text(
             'Do you want to place this order?',
-            style: TextStyle(fontSize: 15, color: Color(0xFF374151), height: 1.4),
+            style: TextStyle(
+              fontSize: 15,
+              color: Color(0xFF374151),
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 20),
-          _summaryRow(Icons.shopping_bag_outlined, '$itemCount item${itemCount == 1 ? '' : 's'}'),
+          _summaryRow(
+            Icons.shopping_bag_outlined,
+            '$itemCount item${itemCount == 1 ? '' : 's'}',
+          ),
           const SizedBox(height: 10),
           _summaryRow(Icons.location_on_outlined, addressLabel),
           const SizedBox(height: 10),
@@ -528,4 +675,3 @@ class _PlaceOrderConfirmSheet extends StatelessWidget {
     );
   }
 }
-

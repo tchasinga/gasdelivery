@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../utils/auth_gatekeeper.dart';
 import '../../utils/repeat_order_helper.dart';
 import 'help_tab_screen.dart';
 import 'history_tab_screen.dart';
@@ -67,22 +68,16 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   List<Widget> _tabBodies() => [
-        HomeTabScreen(
-          onPlaceNewOrder: _openOrderProducts,
-          onFollowOngoingOrder: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const MyOrdersScreen(initialTab: 0),
-              ),
-            );
-          },
-        ),
-        const HelpTabScreen(),
-        const HistoryTabScreen(),
-        if (_kShowMapTab) const MapTabScreen(),
-        if (_kShowReturnTab) const ReturnTabScreen(),
-        const ProfileTabScreen(),
-      ];
+    HomeTabScreen(
+      onPlaceNewOrder: _openOrderProducts,
+      onFollowOngoingOrder: () => _followOngoingOrder(),
+    ),
+    const HelpTabScreen(),
+    const HistoryTabScreen(),
+    if (_kShowMapTab) const MapTabScreen(),
+    if (_kShowReturnTab) const ReturnTabScreen(),
+    const ProfileTabScreen(),
+  ];
 
   void _goToTab(int index) {
     if (index < 0 || index >= _navItems.length) return;
@@ -90,8 +85,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openOrderProducts() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const OrderScreen()),
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const OrderScreen()));
+  }
+
+  Future<void> _followOngoingOrder() async {
+    if (!await AuthGatekeeper.requireAuth(context) || !mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const MyOrdersScreen(initialTab: 0),
+      ),
     );
   }
 
@@ -99,10 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _tabBodies(),
-      ),
+      body: IndexedStack(index: _currentIndex, children: _tabBodies()),
       floatingActionButton: Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.paddingOf(context).bottom + 76,
@@ -149,6 +150,8 @@ class HomeTabScreen extends StatelessWidget {
   static const Color _brand = Color(0xFF014F5B);
 
   Future<void> _repeatPreviousOrder(BuildContext context) async {
+    if (!await AuthGatekeeper.requireAuth(context) || !context.mounted) return;
+
     final cart = context.read<CartProvider>();
     final messenger = ScaffoldMessenger.of(context);
 
@@ -181,6 +184,7 @@ class HomeTabScreen extends StatelessWidget {
     final displayName = customerData?['account_customer_name']
         ?.toString()
         .trim();
+    final isGuest = !authProvider.isAuthenticated;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
@@ -208,7 +212,9 @@ class HomeTabScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Thanks for visiting TaifaGas',
+            isGuest
+                ? 'Browse products and add to cart — sign in when you\'re ready to order.'
+                : 'Thanks for visiting TaifaGas',
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w500,
@@ -216,15 +222,17 @@ class HomeTabScreen extends StatelessWidget {
               height: 1.35,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Would like to place an order?',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey.shade600,
-              height: 1.4,
+          if (!isGuest) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Would like to place an order?',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey.shade600,
+                height: 1.4,
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 28),
           _HomeActionCard(
             icon: Icons.add_shopping_cart_rounded,

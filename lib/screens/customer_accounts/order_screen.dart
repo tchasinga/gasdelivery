@@ -5,6 +5,7 @@ import '../../models/product_item.dart';
 import '../../providers/cart_provider.dart';
 import '../../services/api_services.dart';
 import '../../services/auth_service.dart';
+import '../../utils/auth_gatekeeper.dart';
 import 'my_orders_screen.dart';
 import 'product_details_screen.dart';
 import 'widgets/cart_icon_button.dart';
@@ -42,7 +43,6 @@ class _OrderScreenState extends State<OrderScreen>
 
   Future<void> _loadProducts() async {
     final token = await AuthService.getToken();
-    if (token == null) return;
     setState(() => _loading = true);
 
     final lpgRes = await ApiService.getCustomerProducts(
@@ -57,20 +57,12 @@ class _OrderScreenState extends State<OrderScreen>
     if (!mounted) return;
     setState(() {
       _loading = false;
-      _lpg =
-          (lpgRes['products'] as List? ?? [])
-              .map(
-                (e) =>
-                    ProductItem.fromJson(Map<String, dynamic>.from(e as Map)),
-              )
-              .toList();
-      _accessories =
-          (accRes['products'] as List? ?? [])
-              .map(
-                (e) =>
-                    ProductItem.fromJson(Map<String, dynamic>.from(e as Map)),
-              )
-              .toList();
+      _lpg = (lpgRes['products'] as List? ?? [])
+          .map((e) => ProductItem.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+      _accessories = (accRes['products'] as List? ?? [])
+          .map((e) => ProductItem.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
     });
   }
 
@@ -98,7 +90,9 @@ class _OrderScreenState extends State<OrderScreen>
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
           tabs: const [
-            Tab(child: Text('Gas', style: TextStyle(color: Colors.white))),
+            Tab(
+              child: Text('Gas', style: TextStyle(color: Colors.white)),
+            ),
             Tab(
               child: Text('Accessories', style: TextStyle(color: Colors.white)),
             ),
@@ -126,9 +120,12 @@ class _OrderScreenState extends State<OrderScreen>
             ListTile(
               leading: const Icon(Icons.receipt_long),
               title: const Text('My orders'),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
-                Navigator.of(context).push(
+                if (!await AuthGatekeeper.requireAuth(context) || !context.mounted) {
+                  return;
+                }
+                await Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
                 );
               },
@@ -138,16 +135,15 @@ class _OrderScreenState extends State<OrderScreen>
       ),
       body: RefreshIndicator(
         onRefresh: _loadProducts,
-        child:
-            _loading
-                ? const Center(child: CircularProgressIndicator(color: _brand))
-                : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _LpgGroupGrid(groupedProducts: _groupedLpgProducts),
-                    _ProductGrid(products: _accessories),
-                  ],
-                ),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator(color: _brand))
+            : TabBarView(
+                controller: _tabController,
+                children: [
+                  _LpgGroupGrid(groupedProducts: _groupedLpgProducts),
+                  _ProductGrid(products: _accessories),
+                ],
+              ),
       ),
     );
   }
@@ -185,27 +181,24 @@ class _LpgGroupGrid extends StatelessWidget {
       ),
       itemBuilder: (_, index) {
         final groupType = index == 0 ? 'refill' : 'outright';
-        final title =
-            groupType == 'refill'
-                ? 'LPG Cylinder Refills'
-                : 'New Cylinder Outright Purchase';
-        final subtitle =
-            groupType == 'refill'
-                ? 'LPG Refill Products'
-                : 'LPG Outright Products';
+        final title = groupType == 'refill'
+            ? 'LPG Cylinder Refills'
+            : 'New Cylinder Outright Purchase';
+        final subtitle = groupType == 'refill'
+            ? 'LPG Refill Products'
+            : 'LPG Outright Products';
         final products = groupedProducts[groupType] ?? const <ProductItem>[];
         final image = products
             .map((e) => e.productImage)
             .whereType<String>()
             .firstWhere((url) => url.trim().isNotEmpty, orElse: () => '');
-        final minPrice =
-            products.isEmpty
-                ? 0.0
-                : products
-                    .map((e) => e.productPrices)
-                    .reduce(
-                      (value, element) => value < element ? value : element,
-                    );
+        final minPrice = products.isEmpty
+            ? 0.0
+            : products
+                  .map((e) => e.productPrices)
+                  .reduce(
+                    (value, element) => value < element ? value : element,
+                  );
 
         return InkWell(
           borderRadius: BorderRadius.circular(20),
@@ -221,11 +214,10 @@ class _LpgGroupGrid extends StatelessWidget {
             }
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder:
-                    (_) => _LpgGroupProductsScreen(
-                      title: subtitle,
-                      products: products,
-                    ),
+                builder: (_) => _LpgGroupProductsScreen(
+                  title: subtitle,
+                  products: products,
+                ),
               ),
             );
           },
@@ -249,16 +241,14 @@ class _LpgGroupGrid extends StatelessWidget {
                     borderRadius: const BorderRadius.horizontal(
                       left: Radius.circular(20),
                     ),
-                    child:
-                        image.isNotEmpty
-                            ? Image.network(
-                              image,
-                              fit: BoxFit.cover,
-                              height: double.infinity,
-                              errorBuilder:
-                                  (_, __, ___) => _groupImageFallback(),
-                            )
-                            : _groupImageFallback(),
+                    child: image.isNotEmpty
+                        ? Image.network(
+                            image,
+                            fit: BoxFit.cover,
+                            height: double.infinity,
+                            errorBuilder: (_, __, ___) => _groupImageFallback(),
+                          )
+                        : _groupImageFallback(),
                   ),
                 ),
                 Expanded(
@@ -386,11 +376,8 @@ class _ProductGrid extends StatelessWidget {
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder:
-                    (_) => ProductDetailsScreen(
-                      products: products,
-                      initialProduct: p,
-                    ),
+                builder: (_) =>
+                    ProductDetailsScreen(products: products, initialProduct: p),
               ),
             );
           },
@@ -408,15 +395,14 @@ class _ProductGrid extends StatelessWidget {
                       tag: 'product_${p.productId}',
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child:
-                            p.productImage?.isNotEmpty == true
-                                ? Image.network(
-                                  p.productImage!,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  errorBuilder: (_, __, ___) => _placeholder(),
-                                )
-                                : _placeholder(),
+                        child: p.productImage?.isNotEmpty == true
+                            ? Image.network(
+                                p.productImage!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                errorBuilder: (_, __, ___) => _placeholder(),
+                              )
+                            : _placeholder(),
                       ),
                     ),
                   ),
@@ -446,8 +432,8 @@ class _ProductGrid extends StatelessWidget {
                     alignment: Alignment.centerRight,
                     child: IconButton(
                       icon: const Icon(Icons.add_circle, color: _brand),
-                      onPressed:
-                          () => context.read<CartProvider>().add(p, qty: 1),
+                      onPressed: () =>
+                          context.read<CartProvider>().add(p, qty: 1),
                     ),
                   ),
                 ],

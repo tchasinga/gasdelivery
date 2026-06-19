@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_services.dart';
 import '../../services/auth_service.dart';
 import '../../utils/format_api_label.dart';
+import '../login_screen.dart';
 
 class HistoryTabScreen extends StatefulWidget {
   const HistoryTabScreen({super.key});
@@ -16,6 +17,7 @@ class _HistoryTabScreenState extends State<HistoryTabScreen> {
 
   List<Map<String, dynamic>> _history = [];
   bool _loading = true;
+  bool _guestMode = false;
   String? _error;
 
   @override
@@ -28,6 +30,7 @@ class _HistoryTabScreenState extends State<HistoryTabScreen> {
     setState(() {
       _loading = true;
       _error = null;
+      _guestMode = false;
     });
 
     final token = await AuthService.getToken();
@@ -35,7 +38,7 @@ class _HistoryTabScreenState extends State<HistoryTabScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'Not signed in';
+        _guestMode = true;
       });
       return;
     }
@@ -61,8 +64,18 @@ class _HistoryTabScreenState extends State<HistoryTabScreen> {
     try {
       final dt = DateTime.parse(raw).toLocal();
       const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       final h = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
       final ampm = dt.hour >= 12 ? 'PM' : 'AM';
@@ -111,6 +124,55 @@ class _HistoryTabScreenState extends State<HistoryTabScreen> {
   Widget _buildBody() {
     if (_loading) {
       return const Center(child: CircularProgressIndicator(color: _brand));
+    }
+
+    if (_guestMode) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.history_rounded, size: 64, color: _brand),
+              const SizedBox(height: 20),
+              const Text(
+                'Sign in to view your history',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: _brand,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Your deliveries, payments, returns, and messages appear here after you sign in.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade600, height: 1.45),
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: _brand,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 12,
+                  ),
+                ),
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const LoginScreen(returnAfterLogin: true),
+                    ),
+                  );
+                  if (mounted) await _loadHistory();
+                },
+                child: const Text('Sign in'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     if (_error != null) {
@@ -186,8 +248,10 @@ class _HistoryTabScreenState extends State<HistoryTabScreen> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
             child: ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
               leading: CircleAvatar(
                 backgroundColor: _brand.withValues(alpha: 0.1),
                 child: Icon(_iconForType(type), color: _brand, size: 22),

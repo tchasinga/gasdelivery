@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../utils/auth_gatekeeper.dart';
 import '../../utils/phone_launcher.dart';
 import 'customer_faq_screen.dart';
 import 'customer_message_form_screen.dart';
@@ -38,10 +39,7 @@ class HelpTabScreen extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'How can we help you?',
-            style: TextStyle(
-              fontSize: 15,
-              color: Colors.grey.shade700,
-            ),
+            style: TextStyle(fontSize: 15, color: Colors.grey.shade700),
           ),
           const SizedBox(height: 24),
           _HelpCard(
@@ -58,8 +56,11 @@ class HelpTabScreen extends StatelessWidget {
           _HelpCard(
             icon: Icons.mail_outline_rounded,
             title: 'Write us a message',
-            onTap: () {
-              Navigator.of(context).push(
+            onTap: () async {
+              if (!await AuthGatekeeper.requireAuth(context) || !context.mounted) {
+                return;
+              }
+              await Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => const CustomerMessageFormScreen(),
                 ),
@@ -70,8 +71,7 @@ class HelpTabScreen extends StatelessWidget {
           _HelpCard(
             icon: Icons.phone_in_talk_outlined,
             title: 'Contact customer care',
-            subtitle:
-                'Call our customer care Monday to Friday 9 AM - 5 PM',
+            subtitle: 'Call our customer care Monday to Friday 9 AM - 5 PM',
             onTap: () => launchPhoneCall(_customerCarePhone, context: context),
           ),
         ],

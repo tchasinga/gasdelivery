@@ -8,7 +8,10 @@ import 'customer_accounts/home_screen.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.returnAfterLogin = false});
+
+  /// When true, pops with `true` after OTP success so the caller can resume checkout.
+  final bool returnAfterLogin;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -151,10 +154,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (result['success'] == true) {
         await _persistRememberPreference();
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-          (_) => false,
-        );
+        if (!mounted) return;
+        if (widget.returnAfterLogin) {
+          Navigator.of(context).pop(true);
+        } else {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            (_) => false,
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -187,6 +195,12 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     return AuthScreenShell(
+      leading: widget.returnAfterLogin
+          ? IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.of(context).pop(false),
+            )
+          : null,
       sheetChild: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -269,8 +283,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     Expanded(
                       child: GestureDetector(
-                        onTap: () =>
-                            setState(() => _rememberMe = !_rememberMe),
+                        onTap: () => setState(() => _rememberMe = !_rememberMe),
                         child: const Text(
                           'Remember me',
                           style: TextStyle(

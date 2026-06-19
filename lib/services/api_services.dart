@@ -39,8 +39,6 @@ class ApiService {
     return 'Request failed';
   }
 
-
-
   // static String get baseUrl {
   //   if (kIsWeb) {
   //     return 'http://127.0.0.1:8000/api';
@@ -54,7 +52,6 @@ class ApiService {
     }
     return 'https://cylindtrack.veritech.co.ke/api';
   }
-
 
   static Future<Map<String, dynamic>> signup({
     required String accountCustomerName,
@@ -168,7 +165,6 @@ class ApiService {
     }
   }
 
-
   /// Current Sanctum user (`GET /user`). Pass a valid Bearer token.
   static Future<Map<String, dynamic>> fetchAuthUser(String? bearerToken) async {
     if (bearerToken == null || bearerToken.isEmpty) {
@@ -185,10 +181,9 @@ class ApiService {
       }
       return {
         'success': false,
-        'message':
-            data is Map
-                ? _firstApiErrorMessage(data)
-                : 'Could not load profile',
+        'message': data is Map
+            ? _firstApiErrorMessage(data)
+            : 'Could not load profile',
       };
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -196,9 +191,9 @@ class ApiService {
   }
 
   static Map<String, String> _authHeaders(String? token) => {
-        ..._jsonHeaders,
-        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
-      };
+    ..._jsonHeaders,
+    if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+  };
 
   static Future<Map<String, dynamic>> getMiniWarehouses() async {
     try {
@@ -208,7 +203,10 @@ class ApiService {
       );
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
-        return {'success': true, 'mini_warehouses': data['mini_warehouses'] ?? []};
+        return {
+          'success': true,
+          'mini_warehouses': data['mini_warehouses'] ?? [],
+        };
       }
       return {'success': false, 'message': _firstApiErrorMessage(data)};
     } catch (e) {
@@ -255,7 +253,11 @@ class ApiService {
       );
       final data = jsonDecode(response.body);
       if (response.statusCode == 201 && data['success'] == true) {
-        return {'success': true, 'order': data['order'], 'message': data['message']};
+        return {
+          'success': true,
+          'order': data['order'],
+          'message': data['message'],
+        };
       }
       return {'success': false, 'message': _firstApiErrorMessage(data)};
     } catch (e) {
@@ -278,9 +280,9 @@ class ApiService {
           'success': true,
           'cylinders': rawList is List
               ? rawList
-                  .whereType<Map>()
-                  .map((e) => Map<String, dynamic>.from(e))
-                  .toList()
+                    .whereType<Map>()
+                    .map((e) => Map<String, dynamic>.from(e))
+                    .toList()
               : <Map<String, dynamic>>[],
         };
       }
@@ -299,8 +301,9 @@ class ApiService {
       if (query != null && query.isNotEmpty) {
         params['q'] = query;
       }
-      final uri = Uri.parse('$baseUrl/customer-account/returns/riders')
-          .replace(queryParameters: params.isEmpty ? null : params);
+      final uri = Uri.parse(
+        '$baseUrl/customer-account/returns/riders',
+      ).replace(queryParameters: params.isEmpty ? null : params);
       final response = await http.get(uri, headers: _authHeaders(token));
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
@@ -309,9 +312,9 @@ class ApiService {
           'success': true,
           'riders': rawList is List
               ? rawList
-                  .whereType<Map>()
-                  .map((e) => Map<String, dynamic>.from(e))
-                  .toList()
+                    .whereType<Map>()
+                    .map((e) => Map<String, dynamic>.from(e))
+                    .toList()
               : <Map<String, dynamic>>[],
         };
       }
@@ -330,10 +333,7 @@ class ApiService {
       final response = await http.post(
         Uri.parse('$baseUrl/customer-account/returns/initiate'),
         headers: _authHeaders(token),
-        body: jsonEncode({
-          'rider_id': riderId,
-          'cylinder_ids': cylinderIds,
-        }),
+        body: jsonEncode({'rider_id': riderId, 'cylinder_ids': cylinderIds}),
       );
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
@@ -382,8 +382,9 @@ class ApiService {
     }
   }
 
-
-  static Future<Map<String, dynamic>> getCustomerCylinderCount(String token) async {
+  static Future<Map<String, dynamic>> getCustomerCylinderCount(
+    String token,
+  ) async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/customer-account/cylinder-count'),
@@ -394,11 +395,16 @@ class ApiService {
         final count = data['cylinder_count'];
         final rawList = data['cylinders'];
         final cylinders = rawList is List
-            ? rawList.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+            ? rawList
+                  .whereType<Map>()
+                  .map((e) => Map<String, dynamic>.from(e))
+                  .toList()
             : <Map<String, dynamic>>[];
         return {
           'success': true,
-          'cylinder_count': count is int ? count : int.tryParse(count.toString()) ?? cylinders.length,
+          'cylinder_count': count is int
+              ? count
+              : int.tryParse(count.toString()) ?? cylinders.length,
           'cylinders': cylinders,
         };
       }
@@ -408,7 +414,9 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> getCustomerDeliveryOrders(String token) async {
+  static Future<Map<String, dynamic>> getCustomerDeliveryOrders(
+    String token,
+  ) async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/customer-delivery/orders'),
@@ -477,9 +485,8 @@ class ApiService {
     }
   }
 
-
   static Future<Map<String, dynamic>> getCustomerProducts({
-    required String token,
+    String? token,
     required String category,
     String? groupType,
   }) async {
@@ -488,9 +495,14 @@ class ApiService {
       if (groupType != null && groupType.isNotEmpty) {
         params['product_group_type'] = groupType;
       }
+      final headers = token != null
+          ? _authHeaders(token)
+          : const {'Accept': 'application/json'};
       final response = await http.get(
-        Uri.parse('$baseUrl/customer-products').replace(queryParameters: params),
-        headers: _authHeaders(token),
+        Uri.parse(
+          '$baseUrl/customer-products',
+        ).replace(queryParameters: params),
+        headers: headers,
       );
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
@@ -588,12 +600,13 @@ class ApiService {
   }) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/customer-addresses/nearby-mini-warehouses')
-            .replace(queryParameters: {
-          'lat': '$lat',
-          'lng': '$lng',
-          'radius_km': '$radiusKm',
-        }),
+        Uri.parse('$baseUrl/customer-addresses/nearby-mini-warehouses').replace(
+          queryParameters: {
+            'lat': '$lat',
+            'lng': '$lng',
+            'radius_km': '$radiusKm',
+          },
+        ),
         headers: _authHeaders(token),
       );
       final data = jsonDecode(response.body);
