@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
 import 'screens/customer_accounts/home_screen.dart';
+import 'screens/launch_video_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,7 +42,7 @@ class MyApp extends StatelessWidget {
           scaffoldBackgroundColor: Colors.white,
           useMaterial3: true,
         ),
-        home: const AuthWrapper(),
+        home: const LaunchVideoScreen(next: AuthWrapper()),
       ),
     );
   }

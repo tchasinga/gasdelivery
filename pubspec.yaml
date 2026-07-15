@@ -22,6 +22,7 @@ dependencies:
   geolocator: ^13.0.4
   flutter_polyline_points: ^2.1.0
   url_launcher: ^6.3.1
+  video_player: ^2.9.5
 
 dev_dependencies:
   flutter_test:
@@ -34,20 +35,20 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/images/gasdeliveryandsplashscreen.png
+  image_path: assets/gasexpressiconapk.jpeg
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: assets/images/gasdeliveryandsplashscreen.png
+  adaptive_icon_foreground: assets/gasexpressiconapk.jpeg
   remove_alpha_ios: true
 
 flutter_native_splash:
   color: "#FFFFFF"
-  image: assets/images/gasdeliveryandsplashscreen.png
+  image: assets/gasexpressiconapk.jpeg
   android: true
   ios: true
   web: false
   android_12:
     color: "#FFFFFF"
-    image: assets/images/gasdeliveryandsplashscreen.png
+    image: assets/gasexpressiconapk.jpeg
 
 flutter:
 
@@ -55,6 +56,8 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/gasexpresslauchscreenvideo.mp4
+    - assets/gasexpressiconapk.jpeg
 
   # example:
   # fonts:
