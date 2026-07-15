@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CartProvider()),
       ],
       child: MaterialApp(
-        title: 'Gas Delivery',
+        title: 'Gas express',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(

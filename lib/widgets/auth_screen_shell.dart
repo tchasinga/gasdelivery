@@ -82,7 +82,7 @@ class _BrandHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Gas Delivery',
+            'Gas express',
             style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w600,

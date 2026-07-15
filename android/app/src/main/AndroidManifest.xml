@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:label="Gas Delivery"
+        android:label="Gas express"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
