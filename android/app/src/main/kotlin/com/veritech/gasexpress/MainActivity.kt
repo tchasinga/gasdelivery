@@ -1,4 +1,4 @@
-package com.example.gasdelivery
+package com.veritech.gasexpress
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 
