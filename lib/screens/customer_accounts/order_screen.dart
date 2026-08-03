@@ -432,6 +432,7 @@ class _ProductGrid extends StatelessWidget {
                     alignment: Alignment.centerRight,
                     child: IconButton(
                       icon: const Icon(Icons.add_circle, color: _brand),
+                      Text('Add to cart', style: TextStyle(color: _brand)),
                       onPressed: () =>
                           context.read<CartProvider>().add(p, qty: 1),
                     ),
