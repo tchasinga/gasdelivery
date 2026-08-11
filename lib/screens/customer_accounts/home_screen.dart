@@ -31,6 +31,31 @@ class _HomeScreenState extends State<HomeScreen> {
   static const bool _kShowReturnTab = false;
 
   int _currentIndex = 0;
+  late final PageController _pageController;
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _currentIndex);
+    _pages = [
+      HomeTabScreen(
+        onPlaceNewOrder: _openOrderProducts,
+        onFollowOngoingOrder: () => _followOngoingOrder(),
+      ),
+      const HelpTabScreen(),
+      const HistoryTabScreen(),
+      if (_kShowMapTab) const MapTabScreen(),
+      if (_kShowReturnTab) const ReturnTabScreen(),
+      const ProfileTabScreen(),
+    ];
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   List<AppBottomNavItem> get _navItems => [
     const AppBottomNavItem(
@@ -67,20 +92,19 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   ];
 
-  List<Widget> _tabBodies() => [
-    HomeTabScreen(
-      onPlaceNewOrder: _openOrderProducts,
-      onFollowOngoingOrder: () => _followOngoingOrder(),
-    ),
-    const HelpTabScreen(),
-    const HistoryTabScreen(),
-    if (_kShowMapTab) const MapTabScreen(),
-    if (_kShowReturnTab) const ReturnTabScreen(),
-    const ProfileTabScreen(),
-  ];
-
   void _goToTab(int index) {
     if (index < 0 || index >= _navItems.length) return;
+    if (index == _currentIndex) return;
+    setState(() => _currentIndex = index);
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _onPageChanged(int index) {
+    if (index == _currentIndex) return;
     setState(() => _currentIndex = index);
   }
 
@@ -103,7 +127,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
-      body: IndexedStack(index: _currentIndex, children: _tabBodies()),
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: _onPageChanged,
+        physics: const BouncingScrollPhysics(),
+        children: _pages,
+      ),
       floatingActionButton: Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.paddingOf(context).bottom + 76,
