@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/api_services.dart';
 import '../../services/auth_service.dart';
 import '../../utils/format_api_label.dart';
+import 'order_details_screen.dart';
 
 class MyOrdersScreen extends StatefulWidget {
   const MyOrdersScreen({super.key, this.initialTab = 0});
@@ -86,6 +87,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
     }
   }
 
+  void _openDetails(Map<String, dynamic> order) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OrderDetailsScreen(order: order),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ongoing = _orders.where(_isOngoing).toList();
@@ -125,12 +134,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
                   emptyMessage: 'No ongoing orders right now.',
                   onRefresh: _loadOrders,
                   formatDate: _formatOrderDate,
+                  onOpenDetails: _openDetails,
                 ),
                 _OrderList(
                   orders: completed,
                   emptyMessage: 'No completed orders yet.',
                   onRefresh: _loadOrders,
                   formatDate: _formatOrderDate,
+                  onOpenDetails: _openDetails,
                 ),
               ],
             ),
@@ -144,12 +155,14 @@ class _OrderList extends StatelessWidget {
     required this.emptyMessage,
     required this.onRefresh,
     required this.formatDate,
+    required this.onOpenDetails,
   });
 
   final List<Map<String, dynamic>> orders;
   final String emptyMessage;
   final Future<void> Function() onRefresh;
   final String Function(Map<String, dynamic>) formatDate;
+  final ValueChanged<Map<String, dynamic>> onOpenDetails;
 
   static const _brand = Color(0xFF014F5B);
 
@@ -190,79 +203,143 @@ class _OrderList extends StatelessWidget {
           final dateLabel = formatDate(order);
 
           return Material(
-            elevation: 2,
-            shadowColor: _brand.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(16),
+            elevation: 0,
+            borderRadius: BorderRadius.circular(18),
             color: Colors.white,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          order['order_number']?.toString() ?? 'Order',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                            color: _brand,
-                          ),
-                        ),
-                      ),
-                      if (order['total_amount'] != null)
-                        Text(
-                          'KES ${order['total_amount']}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: _brand,
-                          ),
-                        ),
-                    ],
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () => onOpenDetails(order),
+              child: Ink(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: _brand.withValues(alpha: 0.07),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    warehouse?['name']?.toString() ?? 'Warehouse',
-                    style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
+                  boxShadow: [
+                    BoxShadow(
+                      color: _brand.withValues(alpha: 0.06),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8F4F6),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          status,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: _brand,
+                      Row(
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F4F6),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.receipt_long_rounded,
+                              color: _brand,
+                              size: 22,
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  order['order_number']?.toString() ?? 'Order',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16,
+                                    color: _brand,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  warehouse?['name']?.toString() ?? 'Warehouse',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (order['total_amount'] != null)
+                            Text(
+                              'KES ${order['total_amount']}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: _brand,
+                              ),
+                            ),
+                          const SizedBox(width: 2),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: Colors.grey.shade400,
+                          ),
+                        ],
                       ),
-                      if (dateLabel.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            dateLabel,
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F4F6),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              status,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: _brand,
+                              ),
+                            ),
+                          ),
+                          if (dateLabel.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                dateLabel,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline_rounded,
+                            size: 14,
+                            color: _brand.withValues(alpha: 0.7),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Tap to view full details',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey.shade600,
+                              color: _brand.withValues(alpha: 0.8),
+                              fontWeight: FontWeight.w600,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
           );

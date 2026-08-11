@@ -1,0 +1,826 @@
+import 'package:flutter/material.dart';
+
+import '../../utils/format_api_label.dart';
+import '../../utils/phone_launcher.dart';
+
+class OrderDetailsScreen extends StatelessWidget {
+  const OrderDetailsScreen({super.key, required this.order});
+
+  final Map<String, dynamic> order;
+
+  static const _brand = Color(0xFF014F5B);
+  static const _brandLight = Color(0xFF02788D);
+  static const _brandSoft = Color(0xFFE8F4F6);
+  static const _ink = Color(0xFF122126);
+  static const _muted = Color(0xFF6B7A80);
+
+  @override
+  Widget build(BuildContext context) {
+    final status = formatApiLabelForUi(order['status']?.toString());
+    final warehouse = order['mini_warehouse'] as Map<String, dynamic>?;
+    final rider = order['rider'] as Map<String, dynamic>?;
+    final lineItems = _lineItems();
+    final orderNumber = order['order_number']?.toString() ?? 'Order';
+    final address = (order['delivery_address'] ??
+            (order['customer'] is Map
+                ? (order['customer'] as Map)['address']
+                : null))
+        ?.toString()
+        .trim();
+    final notes = order['notes']?.toString().trim();
+    final altPhone = order['customer_number_alternative']?.toString().trim();
+    final topPad = MediaQuery.paddingOf(context).top;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F7F8),
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.fromLTRB(8, topPad + 4, 16, 28),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [_brand, _brandLight],
+                ),
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(28),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).maybePop(),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const Expanded(
+                        child: Text(
+                          'Order details',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(99),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.28),
+                          ),
+                        ),
+                        child: Text(
+                          status,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          orderNumber,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _isCompleted
+                              ? 'Completed · thanks for ordering with Gas express'
+                              : 'In progress · track every step of your delivery',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.88),
+                            fontSize: 13.5,
+                            height: 1.35,
+                          ),
+                        ),
+                        if (order['total_amount'] != null) ...[
+                          const SizedBox(height: 18),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.payments_outlined,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 10),
+                                const Text(
+                                  'Order total',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  'KES ${order['total_amount']}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 36),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _SectionHeader(
+                  icon: Icons.timeline_rounded,
+                  title: 'Delivery timeline',
+                ),
+                _SurfaceCard(
+                  child: Column(
+                    children: [
+                      _TimelineStep(
+                        label: 'Placed',
+                        value: _formatDate(order['placed_at']),
+                        icon: Icons.receipt_long_rounded,
+                        done: order['placed_at'] != null,
+                        isFirst: true,
+                      ),
+                      _TimelineStep(
+                        label: 'Assigned to rider',
+                        value: _formatDate(order['assigned_at']),
+                        icon: Icons.person_pin_circle_rounded,
+                        done: order['assigned_at'] != null,
+                      ),
+                      _TimelineStep(
+                        label: 'Exchange completed',
+                        value: _formatDate(order['exchange_completed_at']),
+                        icon: Icons.swap_horiz_rounded,
+                        done: order['exchange_completed_at'] != null,
+                      ),
+                      _TimelineStep(
+                        label: 'Delivered',
+                        value: _formatDate(order['delivered_at']),
+                        icon: Icons.check_circle_rounded,
+                        done: order['delivered_at'] != null,
+                        isLast: true,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _SectionHeader(
+                  icon: Icons.inventory_2_outlined,
+                  title: 'Items in this order',
+                ),
+                _SurfaceCard(
+                  child: lineItems.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            'No item details available for this order.',
+                            style: TextStyle(color: _muted),
+                          ),
+                        )
+                      : Column(
+                          children: [
+                            for (var i = 0; i < lineItems.length; i++) ...[
+                              if (i > 0)
+                                Divider(
+                                  height: 24,
+                                  color: _brand.withValues(alpha: 0.08),
+                                ),
+                              _ItemRow(item: lineItems[i]),
+                            ],
+                          ],
+                        ),
+                ),
+                if (_qtyRequested != null || _qtyFulfilled != null) ...[
+                  const SizedBox(height: 18),
+                  _SectionHeader(
+                    icon: Icons.numbers_rounded,
+                    title: 'Quantities',
+                  ),
+                  Row(
+                    children: [
+                      if (_qtyRequested != null)
+                        Expanded(
+                          child: _MetricTile(
+                            label: 'Requested',
+                            value: '$_qtyRequested',
+                          ),
+                        ),
+                      if (_qtyRequested != null && _qtyFulfilled != null)
+                        const SizedBox(width: 10),
+                      if (_qtyFulfilled != null)
+                        Expanded(
+                          child: _MetricTile(
+                            label: 'Fulfilled',
+                            value: '$_qtyFulfilled',
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 18),
+                _SectionHeader(
+                  icon: Icons.location_on_outlined,
+                  title: 'Delivery details',
+                ),
+                _SurfaceCard(
+                  child: Column(
+                    children: [
+                      _DetailTile(
+                        icon: Icons.home_work_outlined,
+                        label: 'Delivery address',
+                        value: (address != null && address.isNotEmpty)
+                            ? address
+                            : 'Not provided',
+                      ),
+                      const SizedBox(height: 12),
+                      _DetailTile(
+                        icon: Icons.storefront_outlined,
+                        label: 'Shop / warehouse',
+                        value: warehouse?['name']?.toString() ?? '—',
+                      ),
+                      const SizedBox(height: 12),
+                      _DetailTile(
+                        icon: Icons.map_outlined,
+                        label: 'Warehouse address',
+                        value: warehouse?['address']?.toString() ?? '—',
+                      ),
+                      if (altPhone != null && altPhone.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _DetailTile(
+                          icon: Icons.phone_outlined,
+                          label: 'Alt. phone',
+                          value: altPhone,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (rider != null) ...[
+                  const SizedBox(height: 18),
+                  _SectionHeader(
+                    icon: Icons.two_wheeler_rounded,
+                    title: 'Assigned rider',
+                  ),
+                  _SurfaceCard(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 54,
+                          height: 54,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [_brand, _brandLight],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(
+                            Icons.person_rounded,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                rider['name']?.toString() ?? 'Rider',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: _ink,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                formatApiLabelForUi(
+                                  rider['vehicle_type']?.toString(),
+                                ),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: _muted,
+                                ),
+                              ),
+                              if (rider['phone'] != null) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  rider['phone'].toString(),
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: _brand,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        if (rider['phone'] != null)
+                          Material(
+                            color: _brandSoft,
+                            borderRadius: BorderRadius.circular(14),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(14),
+                              onTap: () =>
+                                  launchPhoneCall(rider['phone'].toString()),
+                              child: const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: Icon(
+                                  Icons.phone_rounded,
+                                  color: _brand,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (notes != null && notes.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  _SectionHeader(
+                    icon: Icons.sticky_note_2_outlined,
+                    title: 'Notes',
+                  ),
+                  _SurfaceCard(
+                    child: Text(
+                      notes,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        height: 1.5,
+                        color: _ink,
+                      ),
+                    ),
+                  ),
+                ],
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool get _isCompleted => order['status']?.toString() == 'completed';
+
+  int? get _qtyRequested {
+    final v = order['quantity_requested'];
+    if (v is int) return v;
+    return int.tryParse(v?.toString() ?? '');
+  }
+
+  int? get _qtyFulfilled {
+    final v = order['quantity_fulfilled'];
+    if (v is int) return v;
+    return int.tryParse(v?.toString() ?? '');
+  }
+
+  List<Map<String, dynamic>> _lineItems() {
+    final raw = order['order_line_items'];
+    if (raw is List && raw.isNotEmpty) {
+      return raw
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+
+    final sizes = order['cylinder_sizes'];
+    final outrights = order['cylinders_outright'];
+    if (sizes is! List || sizes.isEmpty) return const [];
+
+    final outrightList = outrights is List ? outrights : const [];
+    final items = <Map<String, dynamic>>[];
+    for (var i = 0; i < sizes.length; i++) {
+      final size = sizes[i]?.toString() ?? '';
+      if (size.isEmpty) continue;
+      final isOutright = i < outrightList.length && outrightList[i] == 1;
+      items.add({
+        'product_name': '$size LPG',
+        'product_variant': size,
+        'product_group_type': isOutright ? 'outright' : 'refill',
+        'product_category': 'lpg',
+        'quantity': 1,
+      });
+    }
+    return items;
+  }
+
+  static String _formatDate(dynamic raw) {
+    if (raw == null) return 'Pending';
+    try {
+      final dt = DateTime.parse(raw.toString()).toLocal();
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      final h = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+      final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+      final min = dt.minute.toString().padLeft(2, '0');
+      return '${months[dt.month - 1]} ${dt.day}, ${dt.year} · $h:$min $ampm';
+    } catch (_) {
+      return raw.toString();
+    }
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.icon, required this.title});
+
+  final IconData icon;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10, left: 2),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: OrderDetailsScreen._brand),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: OrderDetailsScreen._brand,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SurfaceCard extends StatelessWidget {
+  const _SurfaceCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: OrderDetailsScreen._brand.withValues(alpha: 0.06),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: OrderDetailsScreen._brand.withValues(alpha: 0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: OrderDetailsScreen._brand.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: OrderDetailsScreen._muted,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: OrderDetailsScreen._brand,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineStep extends StatelessWidget {
+  const _TimelineStep({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.done,
+    this.isFirst = false,
+    this.isLast = false,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final bool done;
+  final bool isFirst;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor = done
+        ? OrderDetailsScreen._brand
+        : const Color(0xFFB7C4C8);
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 28,
+            child: Column(
+              children: [
+                if (!isFirst)
+                  Container(
+                    width: 2,
+                    height: 8,
+                    color: done
+                        ? OrderDetailsScreen._brand.withValues(alpha: 0.35)
+                        : const Color(0xFFD5DEE1),
+                  ),
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: done
+                        ? OrderDetailsScreen._brandSoft
+                        : const Color(0xFFF0F3F4),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: activeColor, width: 1.6),
+                  ),
+                  child: Icon(icon, size: 15, color: activeColor),
+                ),
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      color: done
+                          ? OrderDetailsScreen._brand.withValues(alpha: 0.35)
+                          : const Color(0xFFD5DEE1),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                top: 2,
+                bottom: isLast ? 0 : 18,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: done
+                          ? OrderDetailsScreen._ink
+                          : OrderDetailsScreen._muted,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: done
+                          ? OrderDetailsScreen._brand
+                          : Colors.grey.shade500,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailTile extends StatelessWidget {
+  const _DetailTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: OrderDetailsScreen._brandSoft,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: OrderDetailsScreen._brand, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: OrderDetailsScreen._muted,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  color: OrderDetailsScreen._ink,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ItemRow extends StatelessWidget {
+  const _ItemRow({required this.item});
+
+  final Map<String, dynamic> item;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = item['product_name']?.toString() ?? 'Item';
+    final variant = item['product_variant']?.toString() ?? '';
+    final category = item['product_category']?.toString() ?? '';
+    final group = formatApiLabelForUi(item['product_group_type']?.toString());
+    final qty = item['quantity']?.toString() ?? '1';
+    final unit = item['unit_price'];
+    final subtitleParts = <String>[
+      if (variant.isNotEmpty && variant != category) variant,
+      if (group != '—') group,
+      if (category.isNotEmpty) formatApiLabelForUi(category),
+    ];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: OrderDetailsScreen._brandSoft,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(
+            category == 'accessories'
+                ? Icons.handyman_outlined
+                : Icons.propane_tank_outlined,
+            color: OrderDetailsScreen._brand,
+            size: 24,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  color: OrderDetailsScreen._ink,
+                ),
+              ),
+              if (subtitleParts.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(
+                  subtitleParts.join(' · '),
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: OrderDetailsScreen._muted,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: OrderDetailsScreen._brandSoft,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Qty $qty',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: OrderDetailsScreen._brand,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (unit != null)
+          Text(
+            'KES $unit',
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              color: OrderDetailsScreen._brand,
+              fontSize: 14,
+            ),
+          ),
+      ],
+    );
+  }
+}
