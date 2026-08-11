@@ -12,7 +12,7 @@ class AppBottomNavItem {
   final String label;
 }
 
-/// Floating, brand-styled bottom navigation for the main shell.
+/// Floating dock-style bottom navigation for the main shell.
 class AppBottomNavBar extends StatelessWidget {
   const AppBottomNavBar({
     super.key,
@@ -28,6 +28,7 @@ class AppBottomNavBar extends StatelessWidget {
   static const Color brand = Color(0xFF014F5B);
   static const Color brandLight = Color(0xFF02788D);
   static const Color brandTint = Color(0xFFE8F4F6);
+  static const Color muted = Color(0xFF7A8B90);
 
   @override
   Widget build(BuildContext context) {
@@ -35,59 +36,44 @@ class AppBottomNavBar extends StatelessWidget {
       top: false,
       left: false,
       right: false,
-      minimum: const EdgeInsets.only(bottom: 10),
+      minimum: const EdgeInsets.only(bottom: 8),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        child: DecoratedBox(
+        padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
+        child: Container(
+          height: 68,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: brand.withValues(alpha: 0.08),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: brand.withValues(alpha: 0.14),
-                blurRadius: 28,
+                color: brand.withValues(alpha: 0.12),
+                blurRadius: 24,
                 offset: const Offset(0, 10),
               ),
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: Material(
-              color: Colors.white,
-              child: Container(
-                height: 72,
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                decoration: BoxDecoration(
-                  border: Border.all(color: brandTint, width: 1.2),
-                  borderRadius: BorderRadius.circular(28),
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.white,
-                      brandTint.withValues(alpha: 0.35),
-                    ],
-                  ),
+          child: Row(
+            children: List.generate(items.length, (index) {
+              final selected = index == currentIndex;
+              return Expanded(
+                flex: selected ? 16 : 10,
+                child: _NavSlot(
+                  item: items[index],
+                  selected: selected,
+                  onTap: () => onTap(index),
                 ),
-                child: Row(
-                  children: List.generate(items.length, (index) {
-                    final item = items[index];
-                    final selected = index == currentIndex;
-                    return Expanded(
-                      child: _NavSlot(
-                        item: item,
-                        selected: selected,
-                        onTap: () => onTap(index),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-            ),
+              );
+            }),
           ),
         ),
       ),
@@ -112,88 +98,77 @@ class _NavSlot extends StatelessWidget {
       button: true,
       selected: selected,
       label: item.label,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
-          splashColor: AppBottomNavBar.brand.withValues(alpha: 0.08),
-          highlightColor: AppBottomNavBar.brand.withValues(alpha: 0.04),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
-            decoration: BoxDecoration(
-              color: selected
-                  ? AppBottomNavBar.brand.withValues(alpha: 0.1)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AnimatedScale(
-                    scale: selected ? 1.04 : 1,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutBack,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutCubic,
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        gradient: selected
-                            ? const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  AppBottomNavBar.brand,
-                                  AppBottomNavBar.brandLight,
-                                ],
-                              )
-                            : null,
-                        color: selected ? null : AppBottomNavBar.brandTint,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: selected
-                            ? [
-                                BoxShadow(
-                                  color: AppBottomNavBar.brand.withValues(alpha: 0.28),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Icon(
-                        selected ? item.activeIcon : item.icon,
-                        size: 20,
-                        color: selected
-                            ? Colors.white
-                            : AppBottomNavBar.brand.withValues(alpha: 0.55),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 200),
-                    style: TextStyle(
-                      fontSize: selected ? 10.5 : 10,
-                      height: 1.1,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(18),
+            splashColor: AppBottomNavBar.brand.withValues(alpha: 0.08),
+            highlightColor: AppBottomNavBar.brand.withValues(alpha: 0.04),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.center,
+              padding: EdgeInsets.symmetric(
+                horizontal: selected ? 12 : 8,
+                vertical: 8,
+              ),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                gradient: selected
+                    ? const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppBottomNavBar.brand,
+                          AppBottomNavBar.brandLight,
+                        ],
+                      )
+                    : null,
+                boxShadow: selected
+                    ? [
+                        BoxShadow(
+                          color: AppBottomNavBar.brand.withValues(alpha: 0.28),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      selected ? item.activeIcon : item.icon,
+                      size: selected ? 20 : 22,
                       color: selected
-                          ? AppBottomNavBar.brand
-                          : Colors.grey.shade600,
-                      letterSpacing: selected ? 0.1 : 0,
+                          ? Colors.white
+                          : AppBottomNavBar.muted,
                     ),
-                    child: Text(
-                      item.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+                    if (selected) ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           ),
