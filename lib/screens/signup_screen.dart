@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
-import '../widgets/address_picker_dialog.dart';
 import '../widgets/auth_screen_shell.dart';
 import 'login_screen.dart';
+import 'terms_and_conditions_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -17,7 +17,6 @@ class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _addressController = TextEditingController();
   bool _isLoading = false;
   bool _agreedToTerms = false;
 
@@ -25,18 +24,15 @@ class _SignupScreenState extends State<SignupScreen> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _addressController.dispose();
     super.dispose();
   }
 
-  Future<void> _pickAddress() async {
-    final address = await showDialog<String>(
-      context: context,
-      builder: (context) => const AddressPickerDialog(),
+  void _openTerms() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const TermsAndConditionsScreen(),
+      ),
     );
-    if (address != null && address.isNotEmpty) {
-      setState(() => _addressController.text = address);
-    }
   }
 
   Future<void> _signup() async {
@@ -56,7 +52,6 @@ class _SignupScreenState extends State<SignupScreen> {
     final result = await authProvider.signup(
       accountCustomerName: _nameController.text.trim(),
       accountCustomerPhoneNumber: _phoneController.text.trim(),
-      accountCustomerAddress: _addressController.text.trim(),
     );
     if (!mounted) return;
     setState(() => _isLoading = false);
@@ -130,30 +125,6 @@ class _SignupScreenState extends State<SignupScreen> {
                       : null,
                 ),
               ),
-              AuthLabeledField(
-                label: 'Delivery address',
-                child: TextFormField(
-                  controller: _addressController,
-                  minLines: 1,
-                  maxLines: 3,
-                  style: const TextStyle(fontSize: 15),
-                  decoration: AuthFormStyles.outlineDecoration(
-                    hint: 'Street, city, area',
-                  ).copyWith(
-                    suffixIcon: IconButton(
-                      icon: const Icon(
-                        Icons.place_outlined,
-                        color: Color(0xFF8E8E8E),
-                      ),
-                      onPressed: _pickAddress,
-                      tooltip: 'Search address',
-                    ),
-                  ),
-                  validator: (v) => v == null || v.trim().isEmpty
-                      ? 'Please enter your delivery address'
-                      : null,
-                ),
-              ),
               Theme(
                 data: Theme.of(context).copyWith(checkboxTheme: checkboxTheme),
                 child: Row(
@@ -172,18 +143,29 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () =>
-                            setState(() => _agreedToTerms = !_agreedToTerms),
-                        child: const Padding(
-                          padding: EdgeInsets.only(top: 6),
-                          child: Text(
-                            'I agree to the Terms and Conditions',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF8E8E8E),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            const Text(
+                              'I agree to the ',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF8E8E8E),
+                              ),
                             ),
-                          ),
+                            GestureDetector(
+                              onTap: _openTerms,
+                              child: Text(
+                                'Terms and Conditions',
+                                style: AuthFormStyles.linkStyle().copyWith(
+                                  fontSize: 13,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
