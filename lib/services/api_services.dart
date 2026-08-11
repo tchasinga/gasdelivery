@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -43,7 +44,8 @@ class ApiService {
     if (kIsWeb) {
       return 'http://127.0.0.1:8000/api';
     }
-    return 'http://${Platform.isAndroid ? '10.0.2.2' : '127.0.0.1'}:8000/api';
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
+    return 'http://${isAndroid ? '10.0.2.2' : '127.0.0.1'}:8000/api';
   }
 
   // static String get baseUrl {
