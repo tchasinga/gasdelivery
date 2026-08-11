@@ -99,7 +99,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 22),
               AuthLabeledField(
-                label: 'Full name',
+                label: 'Your name',
                 child: TextFormField(
                   controller: _nameController,
                   keyboardType: TextInputType.name,
@@ -110,7 +110,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     color: AuthColors.ink,
                   ),
                   decoration: AuthFormStyles.outlineDecoration(
-                    hint: 'Your full name',
+                    hint: 'Please type your name',
                     prefixIcon: const Icon(
                       Icons.person_outline_rounded,
                       color: AuthColors.brand,
