@@ -436,6 +436,31 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> cancelCustomerDeliveryOrder(
+    String token,
+    int orderId,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/customer-delivery/orders/$orderId/cancel'),
+        headers: _authHeaders(token),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Order cancelled successfully',
+          'order': data['order'] is Map
+              ? Map<String, dynamic>.from(data['order'] as Map)
+              : null,
+        };
+      }
+      return {'success': false, 'message': _firstApiErrorMessage(data)};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
   static Future<Map<String, dynamic>> getCustomerAccountHistory(
     String token,
   ) async {

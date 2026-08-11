@@ -1,21 +1,134 @@
 import 'package:flutter/material.dart';
 
+import '../../services/api_services.dart';
+import '../../services/auth_service.dart';
 import '../../utils/format_api_label.dart';
 import '../../utils/phone_launcher.dart';
 
-class OrderDetailsScreen extends StatelessWidget {
+class OrderDetailsScreen extends StatefulWidget {
   const OrderDetailsScreen({super.key, required this.order});
 
   final Map<String, dynamic> order;
 
-  static const _brand = Color(0xFF014F5B);
-  static const _brandLight = Color(0xFF02788D);
-  static const _brandSoft = Color(0xFFE8F4F6);
-  static const _ink = Color(0xFF122126);
-  static const _muted = Color(0xFF6B7A80);
+  static const brand = Color(0xFF014F5B);
+  static const brandLight = Color(0xFF02788D);
+  static const brandSoft = Color(0xFFE8F4F6);
+  static const ink = Color(0xFF122126);
+  static const muted = Color(0xFF6B7A80);
+
+  @override
+  State<OrderDetailsScreen> createState() => _OrderDetailsScreenState();
+}
+
+class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
+  static const _brand = OrderDetailsScreen.brand;
+  static const _brandLight = OrderDetailsScreen.brandLight;
+  static const _brandSoft = OrderDetailsScreen.brandSoft;
+  static const _ink = OrderDetailsScreen.ink;
+  static const _muted = OrderDetailsScreen.muted;
+
+  late Map<String, dynamic> _order;
+  bool _cancelling = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _order = Map<String, dynamic>.from(widget.order);
+  }
+
+  bool get _isCompleted => _order['status']?.toString() == 'completed';
+  bool get _isCancelled => _order['status']?.toString() == 'cancelled';
+
+  bool get _canCancel {
+    final status = _order['status']?.toString() ?? '';
+    return status == 'pending' || status == 'processing';
+  }
+
+  Future<void> _confirmCancel() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel order?'),
+        content: Text(
+          'Cancel order ${_order['order_number'] ?? ''}? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Keep order'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Cancel order'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _cancelOrder();
+  }
+
+  Future<void> _cancelOrder() async {
+    final id = _order['id'];
+    final orderId = id is int ? id : int.tryParse(id?.toString() ?? '');
+    if (orderId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not cancel this order.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _cancelling = true);
+    final token = await AuthService.getToken();
+    if (token == null) {
+      if (!mounted) return;
+      setState(() => _cancelling = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please sign in again to cancel this order.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final result = await ApiService.cancelCustomerDeliveryOrder(token, orderId);
+    if (!mounted) return;
+    setState(() => _cancelling = false);
+
+    if (result['success'] == true) {
+      final updated = result['order'];
+      setState(() {
+        if (updated is Map<String, dynamic>) {
+          _order = Map<String, dynamic>.from(updated);
+        } else {
+          _order = {..._order, 'status': 'cancelled'};
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Order cancelled successfully'),
+          backgroundColor: _brand,
+        ),
+      );
+      Navigator.of(context).pop(true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Failed to cancel order'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final order = _order;
     final status = formatApiLabelForUi(order['status']?.toString());
     final warehouse = order['mini_warehouse'] as Map<String, dynamic>?;
     final rider = order['rider'] as Map<String, dynamic>?;
@@ -28,7 +141,6 @@ class OrderDetailsScreen extends StatelessWidget {
         ?.toString()
         .trim();
     final notes = order['notes']?.toString().trim();
-    final altPhone = order['customer_number_alternative']?.toString().trim();
     final topPad = MediaQuery.paddingOf(context).top;
 
     return Scaffold(
@@ -112,9 +224,11 @@ class OrderDetailsScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          _isCompleted
-                              ? 'Completed · thanks for ordering with Gas express'
-                              : 'In progress · track every step of your delivery',
+                          _isCancelled
+                              ? 'Cancelled · this order will not be delivered'
+                              : _isCompleted
+                                  ? 'Completed · thanks for ordering with Gas express'
+                                  : 'In progress · track every step of your delivery',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.88),
                             fontSize: 13.5,
@@ -267,37 +381,57 @@ class OrderDetailsScreen extends StatelessWidget {
                 const SizedBox(height: 18),
                 _SectionHeader(
                   icon: Icons.location_on_outlined,
-                  title: 'Delivery details',
+                  title: 'Delivery',
                 ),
                 _SurfaceCard(
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _DetailTile(
-                        icon: Icons.home_work_outlined,
-                        label: 'Delivery address',
-                        value: (address != null && address.isNotEmpty)
+                      Text(
+                        address != null && address.isNotEmpty
                             ? address
-                            : 'Not provided',
-                      ),
-                      const SizedBox(height: 12),
-                      _DetailTile(
-                        icon: Icons.storefront_outlined,
-                        label: 'Shop / warehouse',
-                        value: warehouse?['name']?.toString() ?? '—',
-                      ),
-                      const SizedBox(height: 12),
-                      _DetailTile(
-                        icon: Icons.map_outlined,
-                        label: 'Warehouse address',
-                        value: warehouse?['address']?.toString() ?? '—',
-                      ),
-                      if (altPhone != null && altPhone.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        _DetailTile(
-                          icon: Icons.phone_outlined,
-                          label: 'Alt. phone',
-                          value: altPhone,
+                            : 'No delivery address on this order',
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          height: 1.45,
+                          color: _ink,
+                          fontWeight: FontWeight.w600,
                         ),
+                      ),
+                      if (warehouse != null) ...[
+                        const SizedBox(height: 12),
+                        Divider(color: _brand.withValues(alpha: 0.08)),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.storefront_outlined,
+                              size: 18,
+                              color: _brand,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                warehouse['name']?.toString() ?? 'Warehouse',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: _brand,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (warehouse['address'] != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            warehouse['address'].toString(),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: _muted,
+                            ),
+                          ),
+                        ],
                       ],
                     ],
                   ),
@@ -401,6 +535,50 @@ class OrderDetailsScreen extends StatelessWidget {
                     ),
                   ),
                 ],
+                if (_canCancel) ...[
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _cancelling ? null : _confirmCancel,
+                      icon: _cancelling
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.red,
+                              ),
+                            )
+                          : const Icon(Icons.cancel_outlined),
+                      label: Text(
+                        _cancelling ? 'Cancelling…' : 'Cancel order',
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red.shade700,
+                        side: BorderSide(color: Colors.red.shade300),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'You can cancel while the shop has not assigned a rider yet.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: Colors.grey.shade600,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
               ]),
             ),
           ),
@@ -409,22 +587,20 @@ class OrderDetailsScreen extends StatelessWidget {
     );
   }
 
-  bool get _isCompleted => order['status']?.toString() == 'completed';
-
   int? get _qtyRequested {
-    final v = order['quantity_requested'];
+    final v = _order['quantity_requested'];
     if (v is int) return v;
     return int.tryParse(v?.toString() ?? '');
   }
 
   int? get _qtyFulfilled {
-    final v = order['quantity_fulfilled'];
+    final v = _order['quantity_fulfilled'];
     if (v is int) return v;
     return int.tryParse(v?.toString() ?? '');
   }
 
   List<Map<String, dynamic>> _lineItems() {
-    final raw = order['order_line_items'];
+    final raw = _order['order_line_items'];
     if (raw is List && raw.isNotEmpty) {
       return raw
           .whereType<Map>()
@@ -432,8 +608,8 @@ class OrderDetailsScreen extends StatelessWidget {
           .toList();
     }
 
-    final sizes = order['cylinder_sizes'];
-    final outrights = order['cylinders_outright'];
+    final sizes = _order['cylinder_sizes'];
+    final outrights = _order['cylinders_outright'];
     if (sizes is! List || sizes.isEmpty) return const [];
 
     final outrightList = outrights is List ? outrights : const [];
@@ -483,14 +659,14 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10, left: 2),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: OrderDetailsScreen._brand),
+          Icon(icon, size: 18, color: OrderDetailsScreen.brand),
           const SizedBox(width: 8),
           Text(
             title,
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: OrderDetailsScreen._brand,
+              color: OrderDetailsScreen.brand,
               letterSpacing: -0.2,
             ),
           ),
@@ -514,11 +690,11 @@ class _SurfaceCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: OrderDetailsScreen._brand.withValues(alpha: 0.06),
+          color: OrderDetailsScreen.brand.withValues(alpha: 0.06),
         ),
         boxShadow: [
           BoxShadow(
-            color: OrderDetailsScreen._brand.withValues(alpha: 0.06),
+            color: OrderDetailsScreen.brand.withValues(alpha: 0.06),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -543,7 +719,7 @@ class _MetricTile extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: OrderDetailsScreen._brand.withValues(alpha: 0.08),
+          color: OrderDetailsScreen.brand.withValues(alpha: 0.08),
         ),
       ),
       child: Column(
@@ -553,7 +729,7 @@ class _MetricTile extends StatelessWidget {
             label,
             style: const TextStyle(
               fontSize: 12.5,
-              color: OrderDetailsScreen._muted,
+              color: OrderDetailsScreen.muted,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -563,7 +739,7 @@ class _MetricTile extends StatelessWidget {
             style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
-              color: OrderDetailsScreen._brand,
+              color: OrderDetailsScreen.brand,
             ),
           ),
         ],
@@ -592,7 +768,7 @@ class _TimelineStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeColor = done
-        ? OrderDetailsScreen._brand
+        ? OrderDetailsScreen.brand
         : const Color(0xFFB7C4C8);
 
     return IntrinsicHeight(
@@ -608,7 +784,7 @@ class _TimelineStep extends StatelessWidget {
                     width: 2,
                     height: 8,
                     color: done
-                        ? OrderDetailsScreen._brand.withValues(alpha: 0.35)
+                        ? OrderDetailsScreen.brand.withValues(alpha: 0.35)
                         : const Color(0xFFD5DEE1),
                   ),
                 Container(
@@ -616,7 +792,7 @@ class _TimelineStep extends StatelessWidget {
                   height: 28,
                   decoration: BoxDecoration(
                     color: done
-                        ? OrderDetailsScreen._brandSoft
+                        ? OrderDetailsScreen.brandSoft
                         : const Color(0xFFF0F3F4),
                     shape: BoxShape.circle,
                     border: Border.all(color: activeColor, width: 1.6),
@@ -628,7 +804,7 @@ class _TimelineStep extends StatelessWidget {
                     child: Container(
                       width: 2,
                       color: done
-                          ? OrderDetailsScreen._brand.withValues(alpha: 0.35)
+                          ? OrderDetailsScreen.brand.withValues(alpha: 0.35)
                           : const Color(0xFFD5DEE1),
                     ),
                   ),
@@ -651,8 +827,8 @@ class _TimelineStep extends StatelessWidget {
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: done
-                          ? OrderDetailsScreen._ink
-                          : OrderDetailsScreen._muted,
+                          ? OrderDetailsScreen.ink
+                          : OrderDetailsScreen.muted,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -661,7 +837,7 @@ class _TimelineStep extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       color: done
-                          ? OrderDetailsScreen._brand
+                          ? OrderDetailsScreen.brand
                           : Colors.grey.shade500,
                       fontWeight: FontWeight.w600,
                     ),
@@ -672,62 +848,6 @@ class _TimelineStep extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _DetailTile extends StatelessWidget {
-  const _DetailTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: OrderDetailsScreen._brandSoft,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: OrderDetailsScreen._brand, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  color: OrderDetailsScreen._muted,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w700,
-                  color: OrderDetailsScreen._ink,
-                  height: 1.35,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
@@ -758,14 +878,14 @@ class _ItemRow extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: OrderDetailsScreen._brandSoft,
+            color: OrderDetailsScreen.brandSoft,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Icon(
             category == 'accessories'
                 ? Icons.handyman_outlined
                 : Icons.propane_tank_outlined,
-            color: OrderDetailsScreen._brand,
+            color: OrderDetailsScreen.brand,
             size: 24,
           ),
         ),
@@ -779,7 +899,7 @@ class _ItemRow extends StatelessWidget {
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
-                  color: OrderDetailsScreen._ink,
+                  color: OrderDetailsScreen.ink,
                 ),
               ),
               if (subtitleParts.isNotEmpty) ...[
@@ -788,7 +908,7 @@ class _ItemRow extends StatelessWidget {
                   subtitleParts.join(' · '),
                   style: const TextStyle(
                     fontSize: 12.5,
-                    color: OrderDetailsScreen._muted,
+                    color: OrderDetailsScreen.muted,
                   ),
                 ),
               ],
@@ -796,7 +916,7 @@ class _ItemRow extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: OrderDetailsScreen._brandSoft,
+                  color: OrderDetailsScreen.brandSoft,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -804,7 +924,7 @@ class _ItemRow extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: OrderDetailsScreen._brand,
+                    color: OrderDetailsScreen.brand,
                   ),
                 ),
               ),
@@ -816,7 +936,7 @@ class _ItemRow extends StatelessWidget {
             'KES $unit',
             style: const TextStyle(
               fontWeight: FontWeight.w800,
-              color: OrderDetailsScreen._brand,
+              color: OrderDetailsScreen.brand,
               fontSize: 14,
             ),
           ),

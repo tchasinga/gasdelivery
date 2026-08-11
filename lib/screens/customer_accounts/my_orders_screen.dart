@@ -61,8 +61,10 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
     });
   }
 
-  bool _isCompleted(Map<String, dynamic> order) =>
-      order['status']?.toString() == 'completed';
+  bool _isCompleted(Map<String, dynamic> order) {
+    final status = order['status']?.toString() ?? '';
+    return status == 'completed' || status == 'cancelled';
+  }
 
   bool _isOngoing(Map<String, dynamic> order) {
     final status = order['status']?.toString() ?? '';
@@ -87,12 +89,15 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
     }
   }
 
-  void _openDetails(Map<String, dynamic> order) {
-    Navigator.of(context).push(
+  Future<void> _openDetails(Map<String, dynamic> order) async {
+    final cancelled = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => OrderDetailsScreen(order: order),
       ),
     );
+    if (cancelled == true && mounted) {
+      await _loadOrders();
+    }
   }
 
   @override
@@ -113,7 +118,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
           tabs: [
-            Tab(text: 'Ongoing Orders (${ongoing.length})'),
+            Tab(text: 'Ongoing (${ongoing.length})'),
             Tab(text: 'Completed (${completed.length})'),
           ],
         ),
@@ -138,7 +143,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen>
                 ),
                 _OrderList(
                   orders: completed,
-                  emptyMessage: 'No completed orders yet.',
+                  emptyMessage: 'No completed or cancelled orders yet.',
                   onRefresh: _loadOrders,
                   formatDate: _formatOrderDate,
                   onOpenDetails: _openDetails,
