@@ -11,7 +11,7 @@ class HelpTabScreen extends StatelessWidget {
   const HelpTabScreen({super.key});
 
   static const Color _brand = Color(0xFF014F5B);
-  static const String _customerCarePhone = '+254700751245';
+  static const String _customerCarePhone = '+254732447447';
 
   @override
   Widget build(BuildContext context) {

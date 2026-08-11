@@ -223,7 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   enabled: !_otpSent,
                   style: const TextStyle(fontSize: 15),
                   decoration: AuthFormStyles.outlineDecoration(
-                    hint: '+2547XXXXXXXX',
+                    hint: '07XXXXXXXX',
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {

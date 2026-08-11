@@ -119,7 +119,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   keyboardType: TextInputType.phone,
                   style: const TextStyle(fontSize: 15),
                   decoration:
-                      AuthFormStyles.outlineDecoration(hint: '+2547XXXXXXXX'),
+                      AuthFormStyles.outlineDecoration(hint: '07XXXXXXXX'),
                   validator: (v) => v == null || v.isEmpty
                       ? 'Please enter your phone number'
                       : null,
