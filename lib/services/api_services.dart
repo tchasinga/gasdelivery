@@ -39,19 +39,19 @@ class ApiService {
     return 'Request failed';
   }
 
-  // static String get baseUrl {
-  //   if (kIsWeb) {
-  //     return 'http://127.0.0.1:8000/api';
-  //   }
-  //   return 'http://${Platform.isAndroid ? '10.0.2.2' : '127.0.0.1'}:8000/api';
-  // }
-
   static String get baseUrl {
     if (kIsWeb) {
-      return 'https://cylindtrack.veritech.co.ke/api';
+      return 'http://127.0.0.1:8000/api';
     }
-    return 'https://cylindtrack.veritech.co.ke/api';
+    return 'http://${Platform.isAndroid ? '10.0.2.2' : '127.0.0.1'}:8000/api';
   }
+
+  // static String get baseUrl {
+  //   if (kIsWeb) {
+  //     return 'https://cylindtrack.veritech.co.ke/api';
+  //   }
+  //   return 'https://cylindtrack.veritech.co.ke/api';
+  // }
 
   static Future<Map<String, dynamic>> signup({
     required String accountCustomerName,
