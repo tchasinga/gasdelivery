@@ -78,14 +78,8 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final checkboxTheme = CheckboxThemeData(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
-      side: const BorderSide(color: Color(0xFFC9C9C9), width: 1.2),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      visualDensity: VisualDensity.compact,
-    );
-
     return AuthScreenShell(
+      tagline: 'Create your account in under a minute',
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
         onPressed: () => Navigator.of(context).maybePop(),
@@ -93,98 +87,134 @@ class _SignupScreenState extends State<SignupScreen> {
       sheetChild: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Welcome.', style: AuthFormStyles.sheetTitleStyle()),
-              const SizedBox(height: 28),
+              Text('Create account', style: AuthFormStyles.sheetTitleStyle()),
+              const SizedBox(height: 8),
+              Text(
+                'Join Gas express to order cylinders and track delivery live.',
+                style: AuthFormStyles.subtitleStyle(),
+              ),
+              const SizedBox(height: 22),
               AuthLabeledField(
-                label: 'Name',
+                label: 'Full name',
                 child: TextFormField(
                   controller: _nameController,
                   keyboardType: TextInputType.name,
                   textCapitalization: TextCapitalization.words,
-                  style: const TextStyle(fontSize: 15),
-                  decoration:
-                      AuthFormStyles.outlineDecoration(hint: 'Your full name'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: AuthColors.ink,
+                  ),
+                  decoration: AuthFormStyles.outlineDecoration(
+                    hint: 'Your full name',
+                    prefixIcon: const Icon(
+                      Icons.person_outline_rounded,
+                      color: AuthColors.brand,
+                    ),
+                  ),
                   validator: (v) =>
                       v == null || v.isEmpty ? 'Please enter your name' : null,
                 ),
               ),
               AuthLabeledField(
-                label: 'Phone',
+                label: 'Phone number',
                 child: TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
-                  style: const TextStyle(fontSize: 15),
-                  decoration:
-                      AuthFormStyles.outlineDecoration(hint: '07XXXXXXXX'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: AuthColors.ink,
+                  ),
+                  decoration: AuthFormStyles.outlineDecoration(
+                    hint: '07XXXXXXXX',
+                    prefixIcon: const Icon(
+                      Icons.phone_iphone_rounded,
+                      color: AuthColors.brand,
+                    ),
+                  ),
                   validator: (v) => v == null || v.isEmpty
                       ? 'Please enter your phone number'
                       : null,
                 ),
               ),
-              Theme(
-                data: Theme.of(context).copyWith(checkboxTheme: checkboxTheme),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: SizedBox(
-                        width: 28,
-                        height: 28,
+              const SizedBox(height: 4),
+              InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 24,
+                        height: 24,
                         child: Checkbox(
                           value: _agreedToTerms,
+                          activeColor: AuthColors.brand,
+                          side: const BorderSide(
+                            color: AuthColors.line,
+                            width: 1.4,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5),
+                          ),
                           onChanged: (v) =>
                               setState(() => _agreedToTerms = v ?? false),
                         ),
                       ),
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            const Text(
-                              'I agree to the ',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF8E8E8E),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: _openTerms,
-                              child: Text(
-                                'Terms and Conditions',
-                                style: AuthFormStyles.linkStyle().copyWith(
-                                  fontSize: 13,
-                                  decoration: TextDecoration.underline,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              const Text(
+                                'I agree to the ',
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  color: AuthColors.muted,
                                 ),
                               ),
-                            ),
-                          ],
+                              GestureDetector(
+                                onTap: _openTerms,
+                                child: Text(
+                                  'Terms and Conditions',
+                                  style: AuthFormStyles.linkStyle().copyWith(
+                                    fontSize: 13.5,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: AuthColors.brand,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               AuthPrimaryButton(
-                label: 'Sign up',
+                label: 'Create account',
                 loading: _isLoading,
                 onPressed: _signup,
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
               Center(
                 child: Wrap(
                   alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
-                      'Already a member? ',
+                      'Already have an account? ',
                       style: AuthFormStyles.footerGreyStyle(),
                     ),
                     TextButton(

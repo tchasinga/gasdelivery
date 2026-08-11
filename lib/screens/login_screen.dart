@@ -97,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('OTP code has been sent to your phone number'),
-            backgroundColor: Color(0xFF014F5B),
+            backgroundColor: AuthColors.brand,
           ),
         );
       } else {
@@ -185,127 +185,168 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _editPhone() {
+    setState(() {
+      _otpSent = false;
+      _otpController.clear();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final checkboxTheme = CheckboxThemeData(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
-      side: const BorderSide(color: Color(0xFFC9C9C9), width: 1.2),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      visualDensity: VisualDensity.compact,
-    );
-
     return AuthScreenShell(
       leading: widget.returnAfterLogin
           ? IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
               onPressed: () => Navigator.of(context).pop(false),
             )
           : null,
       sheetChild: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Welcome back.', style: AuthFormStyles.sheetTitleStyle()),
+              Text(
+                _otpSent ? 'Enter verification code' : 'Welcome back',
+                style: AuthFormStyles.sheetTitleStyle(),
+              ),
               const SizedBox(height: 8),
               Text(
-                'Order gas delivery to your door.',
-                style: AuthFormStyles.footerGreyStyle(),
+                _otpSent
+                    ? 'We sent a 6-digit code to ${_phoneController.text.trim()}.'
+                    : 'Sign in with your phone number to order gas delivery.',
+                style: AuthFormStyles.subtitleStyle(),
               ),
-              const SizedBox(height: 28),
-              AuthLabeledField(
-                label: 'Phone',
-                child: TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  enabled: !_otpSent,
-                  style: const TextStyle(fontSize: 15),
-                  decoration: AuthFormStyles.outlineDecoration(
-                    hint: '07XXXXXXXX',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your phone number';
-                    }
-                    return null;
-                  },
-                ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  AuthStepChip(label: '1 · Phone', active: !_otpSent),
+                  const SizedBox(width: 8),
+                  AuthStepChip(label: '2 · OTP', active: _otpSent),
+                ],
               ),
-              if (_otpSent) ...[
-                AuthLabeledField(
-                  label: 'Verification code',
-                  paddingBottom: 12,
-                  child: TextFormField(
-                    controller: _otpController,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    autofocus: true,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 6,
-                    ),
-                    decoration: AuthFormStyles.outlineDecoration(
-                      hint: '000000',
-                    ).copyWith(counterText: ''),
-                  ),
-                ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton(
-                    onPressed: _isLoading
-                        ? null
-                        : () {
-                            setState(() {
-                              _otpSent = false;
-                              _otpController.clear();
-                            });
-                            _sendOtp();
-                          },
-                    child: const Text('Resend code'),
-                  ),
-                ),
-              ],
-              Theme(
-                data: Theme.of(context).copyWith(checkboxTheme: checkboxTheme),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: Checkbox(
-                        value: _rememberMe,
-                        onChanged: (v) =>
-                            setState(() => _rememberMe = v ?? false),
-                      ),
-                    ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _rememberMe = !_rememberMe),
-                        child: const Text(
-                          'Remember me',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF8E8E8E),
+              const SizedBox(height: 22),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: _otpSent
+                    ? KeyedSubtree(
+                        key: const ValueKey('otp'),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AuthLabeledField(
+                              label: 'Verification code',
+                              paddingBottom: 8,
+                              child: TextFormField(
+                                controller: _otpController,
+                                keyboardType: TextInputType.number,
+                                maxLength: 6,
+                                autofocus: true,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 10,
+                                  color: AuthColors.ink,
+                                ),
+                                decoration: AuthFormStyles.outlineDecoration(
+                                  hint: '••••••',
+                                ).copyWith(counterText: ''),
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                TextButton(
+                                  onPressed: _isLoading ? null : _editPhone,
+                                  child: const Text('Change number'),
+                                ),
+                                TextButton(
+                                  onPressed: _isLoading ? null : _sendOtp,
+                                  child: const Text('Resend code'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      )
+                    : KeyedSubtree(
+                        key: const ValueKey('phone'),
+                        child: AuthLabeledField(
+                          label: 'Phone number',
+                          child: TextFormField(
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: AuthColors.ink,
+                            ),
+                            decoration: AuthFormStyles.outlineDecoration(
+                              hint: '07XXXXXXXX',
+                              prefixIcon: const Icon(
+                                Icons.phone_iphone_rounded,
+                                color: AuthColors.brand,
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your phone number';
+                              }
+                              return null;
+                            },
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
               ),
-              const SizedBox(height: 20),
+              if (!_otpSent) ...[
+                const SizedBox(height: 4),
+                InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => setState(() => _rememberMe = !_rememberMe),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: Checkbox(
+                            value: _rememberMe,
+                            activeColor: AuthColors.brand,
+                            side: const BorderSide(color: AuthColors.line, width: 1.4),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            onChanged: (v) =>
+                                setState(() => _rememberMe = v ?? false),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Remember my phone number',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            color: AuthColors.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 18),
               AuthPrimaryButton(
-                label: _otpSent ? 'Sign in' : 'Continue',
+                label: _otpSent ? 'Verify & sign in' : 'Continue',
                 loading: _isLoading,
                 onPressed: _otpSent ? _verifyOtp : _sendOtp,
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
               Center(
                 child: Wrap(
                   alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       "Don't have an account? ",
@@ -319,7 +360,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         );
                       },
-                      child: Text('Sign up', style: AuthFormStyles.linkStyle()),
+                      child: Text('Create account', style: AuthFormStyles.linkStyle()),
                     ),
                   ],
                 ),
