@@ -57,6 +57,7 @@ class ApiService {
 
   static Future<Map<String, dynamic>> signup({
     required String accountCustomerName,
+    required String accountCustomerSurname,
     required String accountCustomerPhoneNumber,
     String? accountCustomerAddress,
   }) async {
@@ -66,6 +67,7 @@ class ApiService {
         headers: _jsonHeaders,
         body: jsonEncode({
           'account_customer_name': accountCustomerName,
+          'account_customer_surname': accountCustomerSurname,
           'account_customer_phone_number': accountCustomerPhoneNumber,
           'account_customer_address': accountCustomerAddress ?? '',
         }),

@@ -16,7 +16,10 @@ class HelpTabScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final customer = context.watch<AuthProvider>().customerData;
-    final name = customer?['account_customer_name']?.toString().trim();
+    final first = customer?['account_customer_name']?.toString().trim() ?? '';
+    final surname =
+        customer?['account_customer_surname']?.toString().trim() ?? '';
+    final name = [first, surname].where((p) => p.isNotEmpty).join(' ');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
@@ -29,7 +32,7 @@ class HelpTabScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
         children: [
           Text(
-            name != null && name.isNotEmpty ? 'Hello $name,' : 'Hello,',
+            name.isNotEmpty ? 'Hello $name,' : 'Hello,',
             style: const TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w700,

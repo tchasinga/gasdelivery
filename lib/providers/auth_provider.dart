@@ -29,11 +29,13 @@ class AuthProvider with ChangeNotifier {
 
   Future<Map<String, dynamic>> signup({
     required String accountCustomerName,
+    required String accountCustomerSurname,
     required String accountCustomerPhoneNumber,
     String? accountCustomerAddress,
   }) async {
     return AuthService.signup(
       accountCustomerName: accountCustomerName,
+      accountCustomerSurname: accountCustomerSurname,
       accountCustomerPhoneNumber: accountCustomerPhoneNumber,
       accountCustomerAddress: accountCustomerAddress,
     );

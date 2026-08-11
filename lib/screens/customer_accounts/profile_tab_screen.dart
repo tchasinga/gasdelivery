@@ -32,9 +32,12 @@ class ProfileTabScreen extends StatelessWidget {
     }
 
     final customer = authProvider.customerData;
-    final name = customer?['account_customer_name'] as String? ?? 'Customer';
+    final first = customer?['account_customer_name'] as String? ?? '';
+    final surname = customer?['account_customer_surname'] as String? ?? '';
+    final name = [first, surname].where((p) => p.trim().isNotEmpty).join(' ');
+    final displayName = name.isEmpty ? 'Customer' : name;
     final phone = customer?['account_customer_phone_number'] as String? ?? '—';
-    final trimmed = name.trim();
+    final trimmed = displayName.trim();
     final initial = trimmed.isEmpty
         ? '?'
         : trimmed.substring(0, 1).toUpperCase();
@@ -82,7 +85,7 @@ class ProfileTabScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    name,
+                    displayName,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,

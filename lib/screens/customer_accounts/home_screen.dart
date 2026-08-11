@@ -210,9 +210,10 @@ class HomeTabScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final customerData = authProvider.customerData;
-    final displayName = customerData?['account_customer_name']
-        ?.toString()
-        .trim();
+    final first = customerData?['account_customer_name']?.toString().trim() ?? '';
+    final surname =
+        customerData?['account_customer_surname']?.toString().trim() ?? '';
+    final displayName = [first, surname].where((p) => p.isNotEmpty).join(' ');
     final isGuest = !authProvider.isAuthenticated;
 
     return Scaffold(
@@ -229,9 +230,7 @@ class HomeTabScreen extends StatelessWidget {
           const HomeImageCarousel(),
           const SizedBox(height: 28),
           Text(
-            displayName != null && displayName.isNotEmpty
-                ? 'Hello $displayName,'
-                : 'Hello,',
+            displayName.isNotEmpty ? 'Hello $displayName,' : 'Hello,',
             style: const TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w700,
