@@ -39,6 +39,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   bool get _isCompleted => _order['status']?.toString() == 'completed';
   bool get _isCancelled => _order['status']?.toString() == 'cancelled';
 
+  String get _paymentOption =>
+      _order['payment_option']?.toString() ?? 'pay_on_delivery';
+
+  String get _paymentOptionLabel => _paymentOption == 'pay_immediately'
+      ? 'Pay immediately'
+      : 'Pay on delivery';
+
   bool get _canCancel {
     final status = _order['status']?.toString() ?? '';
     return status == 'pending' || status == 'processing';
@@ -518,6 +525,58 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                     ),
                   ),
                 ],
+                const SizedBox(height: 18),
+                _SectionHeader(
+                  icon: Icons.account_balance_wallet_outlined,
+                  title: 'Payment method',
+                ),
+                _SurfaceCard(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: _brandSoft,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          _paymentOption == 'pay_immediately'
+                              ? Icons.flash_on_rounded
+                              : Icons.local_shipping_outlined,
+                          color: _brand,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _paymentOptionLabel,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: _ink,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              _paymentOption == 'pay_immediately'
+                                  ? 'M-Pesa STK is sent when you place the order.'
+                                  : 'You will pay when the rider delivers your order.',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                height: 1.35,
+                                color: _muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 if (notes != null && notes.isNotEmpty) ...[
                   const SizedBox(height: 18),
                   _SectionHeader(

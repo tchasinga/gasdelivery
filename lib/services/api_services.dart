@@ -230,10 +230,12 @@ class ApiService {
     String? deliveryAddress,
     double? deliveryLat,
     double? deliveryLng,
+    String paymentOption = 'pay_on_delivery',
   }) async {
     try {
       final body = <String, dynamic>{
         'mini_warehouse_id': miniWarehouseId,
+        'payment_option': paymentOption,
         if (lineItems != null && lineItems.isNotEmpty)
           'line_items': lineItems
         else ...{
@@ -261,6 +263,7 @@ class ApiService {
           'success': true,
           'order': data['order'],
           'message': data['message'],
+          'payment_initiated': data['payment_initiated'] == true,
         };
       }
       return {'success': false, 'message': _firstApiErrorMessage(data)};

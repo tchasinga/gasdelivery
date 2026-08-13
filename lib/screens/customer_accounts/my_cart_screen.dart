@@ -257,7 +257,7 @@ class _MyCartScreenState extends State<MyCartScreen> {
       return;
     }
 
-    final confirmed = await showModalBottomSheet<bool>(
+    final paymentOption = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -265,25 +265,32 @@ class _MyCartScreenState extends State<MyCartScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder:
-          (ctx) => _PlaceOrderConfirmSheet(
+      builder: (ctx) {
+        final viewInsets = MediaQuery.viewInsetsOf(ctx);
+        return Padding(
+          padding: EdgeInsets.only(bottom: viewInsets.bottom),
+          child: _PlaceOrderConfirmSheet(
             itemCount: cart.itemCount,
             itemTotal: cart.itemTotal,
             addressLabel:
-                _selectedAddress!['account_customer_address_name']
-                    ?.toString() ??
+                _selectedAddress!['account_customer_address_name']?.toString() ??
                 'Delivery address',
             warehouseName:
                 _selectedWarehouse!['name']?.toString() ?? 'Mini warehouse',
           ),
+        );
+      },
     );
 
-    if (confirmed == true && mounted) {
-      await _placeOrder(cart);
+    if (paymentOption != null && mounted) {
+      await _placeOrder(cart, paymentOption: paymentOption);
     }
   }
 
-  Future<void> _placeOrder(CartProvider cart) async {
+  Future<void> _placeOrder(
+    CartProvider cart, {
+    required String paymentOption,
+  }) async {
     if (cart.lines.isEmpty || _selectedWarehouse == null) return;
     if (_selectedAddress == null || _selectedAddress!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -299,20 +306,19 @@ class _MyCartScreenState extends State<MyCartScreen> {
     final token = await AuthService.getToken();
     if (token == null) return;
     setState(() => _placingOrder = true);
-    final lineItems =
-        cart.lines
-            .map(
-              (line) => {
-                'product_id': line.product.productId,
-                'product_name': line.product.productName,
-                'product_category': line.product.productCategory,
-                'product_variant': line.product.displayVariant,
-                'product_group_type': line.product.productGroupType,
-                'quantity': line.quantity,
-                'unit_price': line.product.productPrices,
-              },
-            )
-            .toList();
+    final lineItems = cart.lines
+        .map(
+          (line) => {
+            'product_id': line.product.productId,
+            'product_name': line.product.productName,
+            'product_category': line.product.productCategory,
+            'product_variant': line.product.displayVariant,
+            'product_group_type': line.product.productGroupType,
+            'quantity': line.quantity,
+            'unit_price': line.product.productPrices,
+          },
+        )
+        .toList();
     final (lat, lng) = _resolveAddressOrDeviceCoords();
     final addressHolderId = _toInt(_selectedAddress!['id']);
     final res = await ApiService.placeCustomerDeliveryOrder(
@@ -320,21 +326,33 @@ class _MyCartScreenState extends State<MyCartScreen> {
       miniWarehouseId: _toInt(_selectedWarehouse!['id']),
       lineItems: lineItems,
       notes: 'Cart checkout with ${cart.itemCount} item(s)',
-      customerAccountAddressHolderId:
-          addressHolderId > 0 ? addressHolderId : null,
+      customerAccountAddressHolderId: addressHolderId > 0
+          ? addressHolderId
+          : null,
       deliveryAddress: _formatDeliveryAddress(_selectedAddress!),
       deliveryLat: lat,
       deliveryLng: lng,
+      paymentOption: paymentOption,
     );
     if (!mounted) return;
     setState(() => _placingOrder = false);
+    final success = res['success'] == true;
+    final paymentInitiated = res['payment_initiated'] == true;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(res['message']?.toString() ?? 'Order processed'),
-        backgroundColor: res['success'] == true ? Colors.green : Colors.red,
+        content: Text(
+          res['message']?.toString() ??
+              (success
+                  ? (paymentInitiated
+                        ? 'Order placed. Enter your M-Pesa PIN on the prompt.'
+                        : 'Order placed successfully')
+                  : 'Order failed'),
+        ),
+        backgroundColor: success ? Colors.green : Colors.red,
+        duration: Duration(seconds: paymentInitiated ? 5 : 3),
       ),
     );
-    if (res['success'] == true) {
+    if (success) {
       cart.clear();
       Navigator.pop(context);
     }
@@ -575,7 +593,7 @@ class _MyCartScreenState extends State<MyCartScreen> {
   }
 }
 
-class _PlaceOrderConfirmSheet extends StatelessWidget {
+class _PlaceOrderConfirmSheet extends StatefulWidget {
   const _PlaceOrderConfirmSheet({
     required this.itemCount,
     required this.itemTotal,
@@ -583,124 +601,192 @@ class _PlaceOrderConfirmSheet extends StatelessWidget {
     required this.warehouseName,
   });
 
-  static const _brand = Color(0xFF014F5B);
-
   final int itemCount;
   final double itemTotal;
   final String addressLabel;
   final String warehouseName;
 
   @override
-  Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
+  State<_PlaceOrderConfirmSheet> createState() =>
+      _PlaceOrderConfirmSheetState();
+}
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(24, 8, 24, 16 + bottomInset),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Confirm your order',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: _brand,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Do you want to place this order?',
-            style: TextStyle(
-              fontSize: 15,
-              color: Color(0xFF374151),
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 20),
-          _summaryRow(
-            Icons.shopping_bag_outlined,
-            '$itemCount item${itemCount == 1 ? '' : 's'}',
-          ),
-          const SizedBox(height: 10),
-          _summaryRow(Icons.location_on_outlined, addressLabel),
-          const SizedBox(height: 10),
-          _summaryRow(Icons.local_gas_station, warehouseName),
-          const SizedBox(height: 10),
-          _summaryRow(
-            Icons.payments_outlined,
-            'KES ${itemTotal.toStringAsFixed(2)} item total',
-            emphasized: true,
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF8E7),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE8C96A)),
-            ),
-            child: const Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.info_rounded, size: 22, color: Color(0xFFB45309)),
-                SizedBox(width: 10),
-                Expanded(
+class _PlaceOrderConfirmSheetState extends State<_PlaceOrderConfirmSheet> {
+  static const _brand = Color(0xFF014F5B);
+
+  /// API values: pay_immediately | pay_on_delivery
+  String _paymentOption = 'pay_on_delivery';
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final maxHeight = media.size.height * 0.88;
+
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Flexible(
+                child: SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        'Important notice',
+                      const Text(
+                        'Confirm your order',
                         style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF92400E),
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: _brand,
                         ),
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        'By confirming this order, you acknowledge that you have an empty cylinder available for exchange at the time of delivery.',
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Choose how you want to pay, then place your order.',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 15,
+                          color: Color(0xFF374151),
                           height: 1.4,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF78350F),
                         ),
                       ),
+                      const SizedBox(height: 20),
+                      _summaryRow(
+                        Icons.shopping_bag_outlined,
+                        '${widget.itemCount} item${widget.itemCount == 1 ? '' : 's'}',
+                      ),
+                      const SizedBox(height: 10),
+                      _summaryRow(
+                        Icons.location_on_outlined,
+                        widget.addressLabel,
+                      ),
+                      const SizedBox(height: 10),
+                      _summaryRow(
+                        Icons.local_gas_station,
+                        widget.warehouseName,
+                      ),
+                      const SizedBox(height: 10),
+                      _summaryRow(
+                        Icons.payments_outlined,
+                        'KES ${widget.itemTotal.toStringAsFixed(2)} item total',
+                        emphasized: true,
+                      ),
+                      const SizedBox(height: 22),
+                      const Text(
+                        'Payment method',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: _brand,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _PaymentOptionTile(
+                        selected: _paymentOption == 'pay_immediately',
+                        icon: Icons.flash_on_rounded,
+                        title: 'Pay immediately',
+                        subtitle:
+                            'An M-Pesa STK prompt will be sent to your phone right after you place the order.',
+                        onTap: () => setState(
+                          () => _paymentOption = 'pay_immediately',
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _PaymentOptionTile(
+                        selected: _paymentOption == 'pay_on_delivery',
+                        icon: Icons.local_shipping_outlined,
+                        title: 'Pay on delivery',
+                        subtitle:
+                            'Pay via M-Pesa when the rider arrives with your order.',
+                        onTap: () => setState(
+                          () => _paymentOption = 'pay_on_delivery',
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF8E7),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE8C96A)),
+                        ),
+                        child: const Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.info_rounded,
+                              size: 22,
+                              color: Color(0xFFB45309),
+                            ),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Important notice',
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF92400E),
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'By confirming this order, you acknowledge that you have an empty cylinder available for exchange at the time of delivery.',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      height: 1.4,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF78350F),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _brand,
-                    side: const BorderSide(color: _brand),
-                    minimumSize: const Size.fromHeight(48),
-                  ),
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel'),
-                ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _brand,
-                    minimumSize: const Size.fromHeight(48),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _brand,
+                        side: const BorderSide(color: _brand),
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
                   ),
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Yes, place order'),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _brand,
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      onPressed: () =>
+                          Navigator.pop(context, _paymentOption),
+                      child: const Text('Place order'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -725,3 +811,97 @@ class _PlaceOrderConfirmSheet extends StatelessWidget {
     );
   }
 }
+
+class _PaymentOptionTile extends StatelessWidget {
+  const _PaymentOptionTile({
+    required this.selected,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  static const _brand = Color(0xFF014F5B);
+
+  final bool selected;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? const Color(0xFFE8F4F6) : const Color(0xFFF8FAFB),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected ? _brand : const Color(0xFFD1D5DB),
+              width: selected ? 1.8 : 1,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: selected ? _brand : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: selected ? _brand : const Color(0xFFD1D5DB),
+                  ),
+                ),
+                child: Icon(
+                  icon,
+                  size: 22,
+                  color: selected ? Colors.white : _brand,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: selected ? _brand : const Color(0xFF122126),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        height: 1.35,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                selected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_off_rounded,
+                color: selected ? _brand : Colors.grey.shade400,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
