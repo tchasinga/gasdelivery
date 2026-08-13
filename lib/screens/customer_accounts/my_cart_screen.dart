@@ -39,12 +39,12 @@ class _MyCartScreenState extends State<MyCartScreen> {
     if (token == null) return;
     final addrRes = await ApiService.getCustomerAddresses(token);
     if (addrRes['success'] == true) {
-      final addresses = (addrRes['addresses'] as List)
-          .cast<Map<String, dynamic>>();
+      final addresses =
+          (addrRes['addresses'] as List).cast<Map<String, dynamic>>();
       final fallback = addresses.firstWhere(
         (a) => a['is_default'] == true,
-        orElse: () =>
-            addresses.isNotEmpty ? addresses.first : <String, dynamic>{},
+        orElse:
+            () => addresses.isNotEmpty ? addresses.first : <String, dynamic>{},
       );
       if (fallback.isNotEmpty) {
         _selectedAddress = fallback;
@@ -72,8 +72,8 @@ class _MyCartScreenState extends State<MyCartScreen> {
       _loadingWarehouse = false;
       if (res['success'] != true) return;
 
-      final list = (res['mini_warehouses'] as List)
-          .cast<Map<String, dynamic>>();
+      final list =
+          (res['mini_warehouses'] as List).cast<Map<String, dynamic>>();
       if (list.isEmpty) return;
 
       _selectedWarehouse = list.first;
@@ -89,12 +89,13 @@ class _MyCartScreenState extends State<MyCartScreen> {
     if (_selectedAddress == null || _selectedAddress!.isEmpty) {
       final addrRes = await ApiService.getCustomerAddresses(token);
       if (addrRes['success'] == true) {
-        final addresses = (addrRes['addresses'] as List)
-            .cast<Map<String, dynamic>>();
+        final addresses =
+            (addrRes['addresses'] as List).cast<Map<String, dynamic>>();
         final fallback = addresses.firstWhere(
           (a) => a['is_default'] == true,
-          orElse: () =>
-              addresses.isNotEmpty ? addresses.first : <String, dynamic>{},
+          orElse:
+              () =>
+                  addresses.isNotEmpty ? addresses.first : <String, dynamic>{},
         );
         if (fallback.isNotEmpty) {
           _selectedAddress = fallback;
@@ -145,15 +146,16 @@ class _MyCartScreenState extends State<MyCartScreen> {
       radiusKm: 5,
     );
     if (res['success'] != true) return;
-    final warehouses = (res['mini_warehouses'] as List)
-        .cast<Map<String, dynamic>>();
+    final warehouses =
+        (res['mini_warehouses'] as List).cast<Map<String, dynamic>>();
     final selected = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
-        builder: (_) => MiniWarehouseListScreen(
-          warehouses: warehouses,
-          currentLat: lat,
-          currentLng: lng,
-        ),
+        builder:
+            (_) => MiniWarehouseListScreen(
+              warehouses: warehouses,
+              currentLat: lat,
+              currentLng: lng,
+            ),
       ),
     );
     if (selected != null && mounted) {
@@ -263,15 +265,17 @@ class _MyCartScreenState extends State<MyCartScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => _PlaceOrderConfirmSheet(
-        itemCount: cart.itemCount,
-        itemTotal: cart.itemTotal,
-        addressLabel:
-            _selectedAddress!['account_customer_address_name']?.toString() ??
-            'Delivery address',
-        warehouseName:
-            _selectedWarehouse!['name']?.toString() ?? 'Mini warehouse',
-      ),
+      builder:
+          (ctx) => _PlaceOrderConfirmSheet(
+            itemCount: cart.itemCount,
+            itemTotal: cart.itemTotal,
+            addressLabel:
+                _selectedAddress!['account_customer_address_name']
+                    ?.toString() ??
+                'Delivery address',
+            warehouseName:
+                _selectedWarehouse!['name']?.toString() ?? 'Mini warehouse',
+          ),
     );
 
     if (confirmed == true && mounted) {
@@ -295,19 +299,20 @@ class _MyCartScreenState extends State<MyCartScreen> {
     final token = await AuthService.getToken();
     if (token == null) return;
     setState(() => _placingOrder = true);
-    final lineItems = cart.lines
-        .map(
-          (line) => {
-            'product_id': line.product.productId,
-            'product_name': line.product.productName,
-            'product_category': line.product.productCategory,
-            'product_variant': line.product.displayVariant,
-            'product_group_type': line.product.productGroupType,
-            'quantity': line.quantity,
-            'unit_price': line.product.productPrices,
-          },
-        )
-        .toList();
+    final lineItems =
+        cart.lines
+            .map(
+              (line) => {
+                'product_id': line.product.productId,
+                'product_name': line.product.productName,
+                'product_category': line.product.productCategory,
+                'product_variant': line.product.displayVariant,
+                'product_group_type': line.product.productGroupType,
+                'quantity': line.quantity,
+                'unit_price': line.product.productPrices,
+              },
+            )
+            .toList();
     final (lat, lng) = _resolveAddressOrDeviceCoords();
     final addressHolderId = _toInt(_selectedAddress!['id']);
     final res = await ApiService.placeCustomerDeliveryOrder(
@@ -315,9 +320,8 @@ class _MyCartScreenState extends State<MyCartScreen> {
       miniWarehouseId: _toInt(_selectedWarehouse!['id']),
       lineItems: lineItems,
       notes: 'Cart checkout with ${cart.itemCount} item(s)',
-      customerAccountAddressHolderId: addressHolderId > 0
-          ? addressHolderId
-          : null,
+      customerAccountAddressHolderId:
+          addressHolderId > 0 ? addressHolderId : null,
       deliveryAddress: _formatDeliveryAddress(_selectedAddress!),
       deliveryLat: lat,
       deliveryLng: lng,
@@ -415,14 +419,15 @@ class _MyCartScreenState extends State<MyCartScreen> {
                   final key = cart.keyOf(line);
                   return Card(
                     child: ListTile(
-                      leading: line.product.productImage?.isNotEmpty == true
-                          ? Image.network(
-                              line.product.productImage!,
-                              width: 44,
-                              height: 44,
-                              fit: BoxFit.cover,
-                            )
-                          : const Icon(Icons.propane_tank_outlined),
+                      leading:
+                          line.product.productImage?.isNotEmpty == true
+                              ? Image.network(
+                                line.product.productImage!,
+                                width: 44,
+                                height: 44,
+                                fit: BoxFit.cover,
+                              )
+                              : const Icon(Icons.propane_tank_outlined),
                       title: Text(line.product.productName),
                       subtitle: Text(
                         '${line.product.displayVariant} • KES ${line.product.productPrices.toStringAsFixed(2)}',
@@ -457,11 +462,11 @@ class _MyCartScreenState extends State<MyCartScreen> {
                     isGuest
                         ? 'Sign in to choose a saved address'
                         : (_selectedAddress?['account_customer_address_details']
-                                      ?.toString()
-                                      .isNotEmpty ==
-                                  true
+                                    ?.toString()
+                                    .isNotEmpty ==
+                                true
                             ? _selectedAddress!['account_customer_address_details']
-                                  .toString()
+                                .toString()
                             : 'Tap to choose saved address'),
                   ),
                   trailing: const Icon(Icons.chevron_right),
@@ -480,10 +485,10 @@ class _MyCartScreenState extends State<MyCartScreen> {
                     isGuest
                         ? 'Sign in to find nearby shops'
                         : (_loadingWarehouse
-                              ? 'Searching warehouses in 5km radius...'
-                              : (_selectedWarehouse?['distance_km'] != null
-                                    ? '${_selectedWarehouse!['distance_km']} km away'
-                                    : 'Tap to choose from nearby list')),
+                            ? 'Searching warehouses in 5km radius...'
+                            : (_selectedWarehouse?['distance_km'] != null
+                                ? '${_selectedWarehouse!['distance_km']} km away'
+                                : 'Tap to choose from nearby list')),
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _pickWarehouse,
@@ -527,19 +532,23 @@ class _MyCartScreenState extends State<MyCartScreen> {
                   backgroundColor: _brand,
                   minimumSize: const Size.fromHeight(52),
                 ),
-                onPressed: (_placingOrder || cart.lines.isEmpty)
-                    ? null
-                    : () => _onPlaceOrderPressed(cart),
-                child: _placingOrder
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+                onPressed:
+                    (_placingOrder || cart.lines.isEmpty)
+                        ? null
+                        : () => _onPlaceOrderPressed(cart),
+                child:
+                    _placingOrder
+                        ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : Text(
+                          isGuest ? 'Sign in to place order' : 'Place order',
                         ),
-                      )
-                    : Text(isGuest ? 'Sign in to place order' : 'Place order'),
               ),
             ),
           ),
@@ -623,7 +632,48 @@ class _PlaceOrderConfirmSheet extends StatelessWidget {
             'KES ${itemTotal.toStringAsFixed(2)} item total',
             emphasized: true,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8E7),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE8C96A)),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_rounded, size: 22, color: Color(0xFFB45309)),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Important notice',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF92400E),
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'By confirming this order, you acknowledge that you have an empty cylinder available for exchange at the time of delivery.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.4,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF78350F),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
