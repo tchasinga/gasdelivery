@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../../config/google_maps_keys.dart';
+
 class CreateAddressScreen extends StatefulWidget {
   const CreateAddressScreen({super.key});
 
@@ -13,7 +15,7 @@ class CreateAddressScreen extends StatefulWidget {
 
 class _CreateAddressScreenState extends State<CreateAddressScreen> {
   static const _brand = Color(0xFF014F5B);
-  static const _googleApiKey = 'AIzaSyC_tn_IK4hjPvbzQSp66E2MIgmBXm1fOck';
+  static const _googleApiKey = GoogleMapsKeys.places;
 
   final _nameCtrl = TextEditingController();
   final _detailsCtrl = TextEditingController();

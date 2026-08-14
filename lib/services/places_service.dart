@@ -4,8 +4,10 @@ import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 
+import '../config/google_maps_keys.dart';
+
 class PlacesService {
-  static const String apiKey = 'AIzaSyC_tn_IK4hjPvbzQSp66E2MIgmBXm1fOck';
+  static const String apiKey = GoogleMapsKeys.places;
   static const String baseUrl = 'https://maps.googleapis.com/maps/api';
 
   /// Roadmap preview (Static Maps API). Falls back in UI if the request fails.
