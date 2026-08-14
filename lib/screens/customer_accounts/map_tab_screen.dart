@@ -1,16 +1,81 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../../services/places_service.dart';
-
-class MapTabScreen extends StatelessWidget {
+/// Interactive map tab — free pan / zoom / rotate.
+class MapTabScreen extends StatefulWidget {
   const MapTabScreen({super.key});
 
+  @override
+  State<MapTabScreen> createState() => _MapTabScreenState();
+}
+
+class _MapTabScreenState extends State<MapTabScreen> {
   static const Color _brand = Color(0xFF014F5B);
+  static const LatLng _nairobi = LatLng(-1.286389, 36.817223);
+
+  GoogleMapController? _controller;
+  LatLng _center = _nairobi;
+  bool _loadingLocation = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserLocation();
+  }
+
+  @override
+  void dispose() {
+    _controller = null;
+    super.dispose();
+  }
+
+  Future<void> _loadUserLocation() async {
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (mounted) setState(() => _loadingLocation = false);
+        return;
+      }
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        if (mounted) setState(() => _loadingLocation = false);
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 12),
+        ),
+      );
+      if (!mounted) return;
+      final target = LatLng(pos.latitude, pos.longitude);
+      setState(() {
+        _center = target;
+        _loadingLocation = false;
+      });
+      await _controller?.animateCamera(
+        CameraUpdate.newLatLngZoom(target, 14),
+      );
+    } catch (_) {
+      if (mounted) setState(() => _loadingLocation = false);
+    }
+  }
+
+  Future<void> _recenter() async {
+    await _loadUserLocation();
+    await _controller?.animateCamera(
+      CameraUpdate.newLatLngZoom(_center, 14),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final mapUrl = PlacesService.staticMapUrl();
-
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
       appBar: AppBar(
@@ -22,155 +87,85 @@ class MapTabScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: () {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const MapTabScreen()),
-              );
-            },
+            tooltip: 'My location',
+            icon: const Icon(Icons.my_location, color: Colors.white),
+            onPressed: _recenter,
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          Text(
-            'Delivery area',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: _brand,
-                ),
+          GoogleMap(
+            initialCameraPosition: CameraPosition(target: _center, zoom: 13),
+            onMapCreated: (c) => _controller = c,
+            gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+              Factory<OneSequenceGestureRecognizer>(
+                () => EagerGestureRecognizer(),
+              ),
+            },
+            scrollGesturesEnabled: true,
+            zoomGesturesEnabled: true,
+            tiltGesturesEnabled: true,
+            rotateGesturesEnabled: true,
+            zoomControlsEnabled: true,
+            compassEnabled: true,
+            myLocationEnabled: true,
+            myLocationButtonEnabled: false,
+            mapToolbarEnabled: false,
+            minMaxZoomPreference: const MinMaxZoomPreference(3, 20),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Preview your region. Live driver tracking can plug in here later.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey.shade700,
-                  height: 1.4,
-                ),
-          ),
-          const SizedBox(height: 20),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: AspectRatio(
-              aspectRatio: 16 / 10,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ColoredBox(color: Colors.blueGrey.shade100),
-                  Image.network(
-                    mapUrl,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          color: _brand,
-                          value: progress.expectedTotalBytes != null
-                              ? progress.cumulativeBytesLoaded /
-                                  progress.expectedTotalBytes!
-                              : null,
+          if (_loadingLocation)
+            const Positioned(
+              top: 12,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: _brand,
+                          ),
                         ),
-                      );
-                    },
-                    errorBuilder: (_, __, ___) => _MapFallback(),
-                  ),
-                  Positioned(
-                    left: 16,
-                    right: 16,
-                    bottom: 16,
-                    child: Material(
-                      color: Colors.white.withValues(alpha: 0.92),
-                      elevation: 2,
-                      borderRadius: BorderRadius.circular(14),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.my_location, color: _brand, size: 22),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Nairobi area preview — enable Static Maps on your Google Cloud project for a live image.',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  height: 1.35,
-                                  color: Color(0xFF37474F),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                        SizedBox(width: 10),
+                        Text('Finding your location…'),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: _brand,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Set a delivery pin from the order flow next.'),
                 ),
-              );
-            },
-            icon: const Icon(Icons.add_location_alt_outlined),
-            label: const Text('Drop a pin (coming soon)'),
+              ),
+            ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 20,
+            child: Material(
+              color: Colors.white.withValues(alpha: 0.95),
+              elevation: 3,
+              borderRadius: BorderRadius.circular(14),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Text(
+                  'Drag to move · pinch to zoom · use +/− or rotate with two fingers.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.35,
+                    color: Color(0xFF37474F),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _MapFallback extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.teal.shade100,
-            Colors.blueGrey.shade200,
-          ],
-        ),
-      ),
-      child: const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.map_outlined, size: 64, color: Color(0xFF014F5B)),
-            SizedBox(height: 12),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                'Map preview unavailable. Check Static Maps API billing or network.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF37474F),
-                  fontSize: 14,
-                  height: 1.35,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

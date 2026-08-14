@@ -27,7 +27,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   // --- Tab visibility: flip to `true` to restore hidden tabs ---
-  static const bool _kShowMapTab = false;
+  static const bool _kShowMapTab = true;
   static const bool _kShowReturnTab = false;
 
   int _currentIndex = 0;
@@ -108,6 +108,12 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _currentIndex = index);
   }
 
+  bool get _isMapTabSelected {
+    if (!_kShowMapTab) return false;
+    // Home(0), Help(1), History(2), Map(3), …
+    return _currentIndex == 3;
+  }
+
   void _openOrderProducts() {
     Navigator.of(
       context,
@@ -130,10 +136,15 @@ class _HomeScreenState extends State<HomeScreen> {
       body: PageView(
         controller: _pageController,
         onPageChanged: _onPageChanged,
-        physics: const BouncingScrollPhysics(),
+        // Disable swipe between tabs while on Map so pan gestures stay on the map.
+        physics: _isMapTabSelected
+            ? const NeverScrollableScrollPhysics()
+            : const BouncingScrollPhysics(),
         children: _pages,
       ),
-      floatingActionButton: Padding(
+      floatingActionButton: _isMapTabSelected
+          ? null
+          : Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.paddingOf(context).bottom + 76,
         ),
